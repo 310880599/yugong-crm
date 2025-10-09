@@ -143,7 +143,17 @@
                                 <input type="text" class="layui-input" id="at_time" name="at_time" placeholder="选择日期范围">
                             </div>
                         </div>
-
+<div class="layui-inline">
+    <label class="layui-form-label">运营人员：</label>
+    <div class="layui-input-inline">
+        <select name="oper_user" id="oper_user" lay-search="">
+            <option value="">请选择运营人员</option>
+            {volist name='operUserResult' id='vo'} 
+            <option value="{$vo.oper_user}">{$vo.oper_user}</option>
+            {/volist}
+        </select>
+    </div>
+</div>
                     </div>
 
 
@@ -204,6 +214,7 @@
                 cols: [[
                     { checkbox: true, fixed: true },
                     { field: 'id', title: 'ID', width: 80, fixed: true, hide: true },
+               
                     {
                         field: 'kh_name', title: '客户名称', width: 200, templet: function (res) {
                             return "<a href='{:url('dialogue')}?id=" + res.id + "'>" + res.kh_name + "</a>";
@@ -214,18 +225,19 @@
                             return res.issuccess == 1 ? '已成交' : '未成交';
                         }
                     },
-                    {
-                        field: 'contact_type', title: '联系方式类型', width: 150, templet: function (res) {
-                            return res.contact_type || '';
-                        }
-                    },
-                    {
-                        field: 'contact_value', title: '联系方式值', width: 200, templet: function (res) {
-                            return res.contact_value || '';
-                        }
-                    },
+                    // {
+                    //     field: 'contact_type', title: '联系方式类型', width: 150, templet: function (res) {
+                    //         return res.contact_type || '';
+                    //     }
+                    // },
+                    // {
+                    //     field: 'contact_value', title: '联系方式值', width: 200, templet: function (res) {
+                    //         return res.contact_value || '';
+                    //     }
+                    // },
                     { field: 'last_up_records', title: '最新跟进记录' },
                     { field: 'pr_user', title: '负责人' },
+                      { field: 'oper_user', title: '运营姓名', width: 140, },
                     { field: 'at_time', title: '创建时间' },
                     { field: 'ut_time', title: '更新时间' },
                     { width: 320, align: 'center', toolbar: '#action' }
