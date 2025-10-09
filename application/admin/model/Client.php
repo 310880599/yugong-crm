@@ -31,89 +31,167 @@ class Client extends Model
     }
 
     //查询
-    public function getClientSearchList($page, $limit, $keyword)
-    {
+/**
+ * 获取客户搜索列表
+ * 
+ * @param int $page 页码
+ * @param int $limit 每页记录数
+ * @param array $keyword 查询条件
+ * @return array 查询结果
+ */
+public function getClientSearchList($page, $limit, $keyword)
+{
+    $mapAtTime = []; //添加时间
+    $mapKhRank = []; //客户级别
+    $mapKhStatus = []; //客户状态
+    $mapPhone = []; //手机号模糊查询
+    $mapKhName = []; //客户名称
+    $mapXsSource = []; //线索/客户来源
+    $mapPrUser = []; //业务员/负责人
+    $mapOperUser = []; // 新增：运营人员查询条件
 
-        $mapAtTime = []; //添加时间
-        $mapKhRank = []; //客户级别
-        $mapKhStatus = []; //客户状态
-        $mapPhone = []; //手机号模糊查询
-        $mapKhName = []; //客户名称
-        $mapXsSource = []; //线索/客户来源
-        $mapPrUser = []; //业务员/负责人
-
-        if (!empty($keyword['timebucket'])) {
-            $mapAtTime[] = $keyword['timebucket'];
-        }
-        if ($keyword['kh_rank'] != '') {
-
-            $mapKhRank =  ['kh_rank' => $keyword['kh_rank']];
-        }
-
-        if ($keyword['kh_status'] != '') {
-
-            $mapKhStatus =  ['kh_status' => $keyword['kh_status']];
-        }
-
-        if ($keyword['phone'] != '') {
-            $mapPhone = $this->getContactSearch($keyword['phone']);
-        }
-
-        if ($keyword['kh_name'] != '') {
-            $mapKhName = [['kh_name', 'like', '%' . $keyword['kh_name'] . '%']];
-        }
-
-        if ($keyword['xs_source'] != '') {
-
-            $mapXsSource =  ['xs_source' => $keyword['xs_source']];
-        }
-
-        if ($keyword['pr_user'] != '') {
-            $mapPrUser = [['pr_user', 'like', '%' . $keyword['pr_user'] . '%']];
-        }
-        $current_admin = Admin::getMyInfo();
-        $team_name = $current_admin['team_name'] ?? '';
-        $a_where = [];
-        if (strpos($current_admin['org'], 'admin') === false) {
-            $a_where = [(new ControllerClient())->getorgWhere($current_admin['org'])];
-        }
-        $usernames  = [$current_admin['username']];
-        if ($current_admin['group_id'] == 1) {
-            $usernames = [];
-            if($a_where){
-                 $usernames = Db::name('admin')->where($a_where)->column('username');
-            }
-        } else if ($team_name) {
-            // 主管查看直属下属及自己的客户
-            $usernames = Db::name('admin')->where('team_name', $team_name)->where($a_where)->column('username');
-        }
-
-        $result  = Db::table('crm_leads')
-            ->where(function ($query) use ($usernames) {
-                if ($usernames) {
-                    $query->whereIn('pr_user', $usernames);
-                }
-            })
-            ->where($mapPhone)
-            ->where($mapKhName)
-            ->where($mapKhStatus)
-            ->where($mapKhRank)
-            ->where($mapXsSource)
-            ->where($mapPrUser)
-            ->where($mapAtTime)
-            ->where(['status' => 1, 'issuccess' => -1])
-            ->order('at_time desc')
-            ->paginate(array('list_rows' => $limit, 'page' => $page))
-            ->toArray();
-
-        //数据集判断方式
-        //if($result->isEmpty()){return null;}
-        if ($result['total'] == 0) {
-            return null;
-        } else {
-            return $result;
-        }
+    if (!empty($keyword['timebucket'])) {
+        $mapAtTime[] = $keyword['timebucket'];
     }
+    if ($keyword['kh_rank'] != '') {
+        $mapKhRank =  ['kh_rank' => $keyword['kh_rank']];
+    }
+
+    if ($keyword['kh_status'] != '') {
+        $mapKhStatus =  ['kh_status' => $keyword['kh_status']];
+    }
+
+    if ($keyword['phone'] != '') {
+        $mapPhone = $this->getContactSearch($keyword['phone']);
+    }
+
+    if ($keyword['kh_name'] != '') {
+        $mapKhName = [['kh_name', 'like', '%' . $keyword['kh_name'] . '%']];
+    }
+
+    if ($keyword['xs_source'] != '') {
+        $mapXsSource =  ['xs_source' => $keyword['xs_source']];
+    }
+
+    if ($keyword['pr_user'] != '') {
+        $mapPrUser = [['pr_user', 'like', '%' . $keyword['pr_user'] . '%']];
+    }
+    
+    // 新增：处理运营人员查询条件
+    if (!empty($keyword['oper_user'])) {
+        $mapOperUser = [['oper_user', '=', $keyword['oper_user']]];
+    }
+
+    $current_admin = Admin::getMyInfo();
+    $team_name = $current_admin['team_name'] ?? '';
+    $a_where = [];
+    if (strpos($current_admin['org'], 'admin') === false) {
+        $a_where = [(new ControllerClient())->getorgWhere($current_admin['org'])];
+    }
+    $usernames  = [$current_admin['username']];
+    if ($current_admin['group_id'] == 1) {
+        $usernames = [];
+        if($a_where){
+             $usernames = Db::name('admin')->where($a_where)->column('username');
+        }
+    } else if ($team_name) {
+        // 主管查看直属下属及自己的客户
+        $usernames = Db::name('admin')->where('team_name', $team_name)->where($a_where)->column('username');
+    }
+
+    $result  = Db::table('crm_leads')
+        ->where(function ($query) use ($usernames) {
+            if ($usernames) {
+                $query->whereIn('pr_user', $usernames);
+            }
+        })
+        ->where($mapPhone)
+        ->where($mapKhName)
+        ->where($mapKhStatus)
+        ->where($mapKhRank)
+        ->where($mapXsSource)
+        ->where($mapPrUser)
+        ->where($mapOperUser)  // 新增：添加运营人员查询条件
+        ->where($mapAtTime)
+        ->where(['status' => 1, 'issuccess' => -1])
+        ->order('at_time desc')
+        ->paginate(array('list_rows' => $limit, 'page' => $page))
+        ->toArray();
+
+    //数据集判断方式
+    //if($result->isEmpty()){return null;}
+    if ($result['total'] == 0) {
+        return null;
+    } else {
+        return $result;
+    }
+}
+
+/**
+ * 解析时间范围
+ * 
+ * @param string $timebucket 时间范围标识
+ * @return array|null [开始时间, 结束时间]
+ */
+protected function parseTimeBucket($timebucket)
+{
+    $now = time();
+    switch ($timebucket) {
+        case 'today':
+            return [date('Y-m-d 00:00:00', $now), date('Y-m-d 23:59:59', $now)];
+        case 'yesterday':
+            $yesterday = strtotime('-1 day');
+            return [date('Y-m-d 00:00:00', $yesterday), date('Y-m-d 23:59:59', $yesterday)];
+        case 'this_week':
+            $monday = strtotime('this week', $now);
+            $sunday = strtotime('next sunday', $now);
+            return [date('Y-m-d 00:00:00', $monday), date('Y-m-d 23:59:59', $sunday)];
+        case 'last_week':
+            $lastMonday = strtotime('last week', $now);
+            $lastSunday = strtotime('last sunday', $now);
+            return [date('Y-m-d 00:00:00', $lastMonday), date('Y-m-d 23:59:59', $lastSunday)];
+        case 'this_month':
+            $firstDay = strtotime(date('Y-m-01', $now));
+            $lastDay = strtotime(date('Y-m-t', $now) . ' 23:59:59');
+            return [date('Y-m-d 00:00:00', $firstDay), date('Y-m-d 23:59:59', $lastDay)];
+        case 'last_month':
+            $lastMonth = strtotime('-1 month', $now);
+            $firstDay = strtotime(date('Y-m-01', $lastMonth));
+            $lastDay = strtotime(date('Y-m-t', $lastMonth) . ' 23:59:59');
+            return [date('Y-m-d 00:00:00', $firstDay), date('Y-m-d 23:59:59', $lastDay)];
+        default:
+            return null;
+    }
+}
+
+/**
+ * 获取当前用户有权限查看的用户名列表
+ * 
+ * @return array 用户名列表
+ */
+protected function getUsernamesForPermission()
+{
+    $current_admin = \app\admin\model\Admin::getMyInfo();
+    $team_name = $current_admin['team_name'] ?? '';
+    
+    // 超级管理员
+    if ($current_admin['group_id'] == 1) {
+        return [];
+    }
+    
+    // 普通用户
+    $usernames = [$current_admin['username']];
+    
+    // 团队主管
+    if ($team_name) {
+        $teamMembers = Db::name('admin')
+            ->where('team_name', $team_name)
+            ->column('username');
+        $usernames = array_unique(array_merge($usernames, $teamMembers));
+    }
+    
+    return $usernames;
+}
 
     public function getContactSearch($phone)
     {

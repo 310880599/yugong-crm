@@ -44,7 +44,7 @@ class Client extends Common
     // 添加公共日志
     static function addOperLog($leads_id, $type, $description)
     {
-        $description = is_string($description) ? $description : json_encode($description, JSON_UNESCAPED_SLASHES |JSON_UNESCAPED_UNICODE);
+       $description = is_string($description) ? $description : json_encode($description, JSON_UNESCAPED_SLASHES |JSON_UNESCAPED_UNICODE);
         Db::table('crm_operation_log')->insert([
             'user_id' => Session::get('aid'),
             'leads_id' => $leads_id,
@@ -86,71 +86,10 @@ class Client extends Common
 
 
     //客户列表
-    public function index()
+  public function index()
     {
         if (request()->isPost()) {
             return $this->clientSearch();
-            $page = input('page', 1);
-            $pageSize = input('limit', config('pageSize'));
-            $adminId = Session::get('aid');
-            $subordinates = Db::name('admin')->where('parent_id', $adminId)->column('username');
-
-            // 基本客户条件
-            $query = Db::name('crm_leads')->alias('l')->where(['l.status' => 1, 'l.issuccess' => -1]);
-
-            // if ($adminId == 1) {
-            //     // 超级管理员无需额外条件
-            // } elseif (!empty($subordinates)) {
-            //     // 主管查看直属下属及自己的客户
-            //     $usernames = array_merge($subordinates, [Session::get('username')]);
-            //     $query->whereIn('l.pr_user', $usernames);
-            // } else {
-            //     // 普通员工仅查看自己名下的客户
-            //     $query->where(['l.pr_user' => Session::get('username')]);
-            // }
-            $usernames  = [session('username')];
-            $team_name = session('team_name') ?? '';
-            if ($adminId == 1) {
-                $usernames = [];
-            } else if ($team_name) {
-                // 主管查看直属下属及自己的客户
-                $usernames = Db::name('admin')->where('team_name', $team_name)->column('username');
-            }
-
-            // 查询客户数据，并拼接联系方式
-            $list = $query->where(function ($query) use ($usernames) {
-                if ($usernames) {
-                    $query->whereIn('l.pr_user', $usernames);
-                }
-            })
-                ->field([
-                    'l.*',
-                    "GROUP_CONCAT(
-                    DISTINCT CASE c.contact_type
-                        WHEN 1 THEN '手机号'
-                        WHEN 2 THEN '邮箱'
-                        WHEN 3 THEN 'WhatsApp'
-                        ELSE '其他'
-                    END ORDER BY c.id SEPARATOR '<br>'
-                ) AS contact_type",
-                    "GROUP_CONCAT(DISTINCT c.contact_value ORDER BY c.id SEPARATOR '<br>') AS contact_value"
-                ])
-                ->leftJoin('crm_contacts c', 'l.id = c.leads_id')
-                ->group('l.id')
-                ->order('l.at_time desc')
-                ->paginate([
-                    'list_rows' => $pageSize,
-                    'page' => $page
-                ])
-                ->toArray();
-
-            return [
-                'code' => 0,
-                'msg' => '获取成功!',
-                'data' => $list['data'],
-                'count' => $list['total'],
-                'rel' => 1
-            ];
         }
 
         $khRankList = Db::table('crm_client_rank')->select();
@@ -163,11 +102,33 @@ class Client extends Common
                 $query->where('team_name', $team_name);
             }
         })->field('admin_id,username')->select();
+        
+        // 修复：所有人获取当前所属组织的所有运营人员（解决空格问题）
+        $currentAdmin = \app\admin\model\Admin::getMyInfo();
+        $currentOrg = $currentAdmin['org'] ?? '';
+        
+        $operUserResult = Db::name('admin')
+            ->where('group_id', '<>', 1)
+            ->whereIn('team_name', ['询盘先锋队', '询盘特战队']);
+        
+        // 关键修复：使用TRIM函数处理org字段空格问题
+        // 1. 确保当前org值去除空格
+        // 2. 数据库查询时也去除空格进行匹配
+        $trimmedOrg = trim($currentOrg);
+        if (!empty($trimmedOrg) && $trimmedOrg !== 'admin') {
+            $operUserResult->whereRaw("TRIM(org) = ?", [$trimmedOrg]);
+        }
+        // 超级管理员(org='admin')不添加过滤条件，显示所有运营人员
+        
+        $operUserResult = $operUserResult
+            ->field('admin_id, username, username as oper_user')
+            ->select();
+
         $this->assign('adminResult', $adminResult);
+        $this->assign('operUserResult', $operUserResult);
         $this->assign('khRankList', $khRankList);
         $this->assign('khStatusList', $khStatusList);
         $this->assign('xsSourceList', $xsSourceList);
-
         return $this->fetch();
     }
 
@@ -1006,14 +967,13 @@ class Client extends Common
                 // if (!$product) {
                 //     $this->addProduct($product_name);
                 // }
-
+                
                 // 添加日志记录
                 $this->addOperLog(
                     $id,
                     '新增客户',
                     ['运营人员'=>$data['oper_user'],'联系方式'=>$contact]
                 );
-                
                 // 提交事务
                 Db::commit();
                 $this->redisUnLock();
@@ -1077,9 +1037,7 @@ class Client extends Common
                 // if (!$product) {
                 //     $this->addProduct($product_name);
                 // }
-
-
-                // 添加日志记录
+                    // 添加日志记录
                 $this->addOperLog(
                     $data['id'],
                     '编辑客户',
