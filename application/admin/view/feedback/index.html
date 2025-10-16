@@ -1,0 +1,280 @@
+{extend name="public/base" /}
+{block name="header"}
+<style>
+    /* 与submit.html统一的样式 */
+    .layui-card {
+        border-radius: 8px;
+        box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
+        border: none;
+        overflow: hidden;
+    }
+    .layui-card-header {
+        background: linear-gradient(90deg, #009688, #009688);
+        color: white;
+        border: none;
+        font-weight: bold;
+        padding: 12px 15px;
+    }
+    .layui-card-header i {
+        margin-right: 8px;
+    }
+    .layui-card-body {
+        padding: 20px;
+    }
+    
+    /* 搜索区域样式 */
+    .search-container {
+        background: #fff;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+    }
+    
+    /* 表格样式 */
+    .layui-table {
+        border-radius: 4px;
+        overflow: hidden;
+        width: 100%;
+        margin-bottom: 0;
+    }
+    .layui-table thead tr {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #ebeef5;
+    }
+    .layui-table th {
+        font-weight: 500;
+        color: #303133;
+        padding: 10px 15px;
+    }
+    .layui-table td {
+        padding: 12px 15px;
+        color: #606266;
+        border: none;
+        border-bottom: 1px solid #f5f7fa;
+    }
+    .layui-table tbody tr:hover {
+        background-color: #f9fafc;
+    }
+    .layui-table .status-0 {
+        color: #F56C6C;
+        font-weight: 500;
+    }
+    .layui-table .status-1 {
+        color: #67C23A;
+        font-weight: 500;
+    }
+    .layui-table .feedback-title {
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* 操作按钮样式 */
+    .action-btn {
+        padding: 0 10px;
+        height: 26px;
+        line-height: 24px;
+        margin-right: 5px;
+        border-radius: 2px;
+        font-size: 12px;
+    }
+    .action-btn:last-child {
+        margin-right: 0;
+    }
+    .action-btn i {
+        margin-right: 3px;
+        font-size: 12px;
+    }
+    
+    /* 分页样式 */
+    .layui-laypage {
+        margin-top: 15px;
+        text-align: right;
+        border: none;
+        background: #fff;
+        padding: 10px;
+        border-radius: 4px;
+    }
+    .layui-laypage a,
+    .layui-laypage span {
+        height: 28px;
+        line-height: 28px;
+        min-width: 28px;
+        padding: 0 10px;
+        border-radius: 2px;
+        border: 1px solid #e6e6e6;
+        margin: 0 2px;
+    }
+    .layui-laypage .layui-laypage-curr {
+        background: linear-gradient(90deg, #009688, #009688);
+        border-color: #009688;
+        color: white;
+    }
+    
+    /* 空数据状态 */
+    .table-empty {
+        text-align: center;
+        padding: 40px 0;
+        color: #909399;
+        border: 1px dashed #ebeef5;
+        border-radius: 4px;
+        margin-top: 15px;
+    }
+    .table-empty i {
+        font-size: 48px;
+        display: block;
+        margin-bottom: 10px;
+        color: #c0c4cc;
+    }
+    
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .layui-table td, .layui-table th {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+        .layui-table .feedback-title {
+            max-width: 150px;
+        }
+        .layui-card-body {
+            padding: 15px;
+        }
+        .search-container {
+            padding: 10px;
+        }
+    }
+</style>
+{/block}
+
+{block name="main"}
+<div class="layui-fluid" style="padding: 15px;">
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md10 layui-col-md-offset1">
+  
+            <!-- 表格区域 -->
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <i class="layui-icon layui-icon-list"></i> 问题反馈列表
+                    <div class="layui-btn-group" style="float: right; margin-top: -3px;">
+                        <a href="{:url('feedback/submit')}" class="layui-btn layui-btn-sm" style="background: linear-gradient(90deg, #009688, #009688); border: none; color: white; height: 28px; line-height: 28px; padding: 0 12px; border-radius: 4px;">
+                            <i class="layui-icon layui-icon-add-1" style="margin-right: 3px;"></i> 提交问题
+                        </a>
+                    </div>
+                </div>
+                <div class="layui-card-body">
+                    {if condition="!empty($list)"}
+                    <table class="layui-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">ID</th>
+                                <th style="width: 120px;">用户名</th>
+                                <th>问题标题</th>
+                              <th>问题内容</th>
+                                <th style="width: 160px;">提交时间</th>
+                               
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {volist name="list" id="vo"}
+                            <tr>
+                                <td>{$vo.id}</td>
+                                <td>{$vo.username}</td>
+                                <td title="{$vo.title}" class="feedback-title">{$vo.title}</td>
+                                <td title="{$vo.content}" class="feedback-content">{$vo.content}</td>
+                                
+                                <td>{:date('Y-m-d H:i:s', $vo.create_time)}</td>
+                               
+                            </tr>
+                            {/volist}
+                        </tbody>
+                    </table>
+                    
+                    <div class="layui-laypage">
+                        {$list->render()|raw}
+                    </div>
+                    {else}
+                    <div class="table-empty">
+                        <i class="layui-icon layui-icon-face-smile"></i>
+                        <p>暂无问题反馈数据</p>
+                    </div>
+                    {/if}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{/block}
+
+{block name="footer"}
+<script>
+layui.use(['form', 'layer', 'jquery'], function(){
+    var form = layui.form;
+    var layer = layui.layer;
+    var $ = layui.jquery;
+    
+    // 初始化表单
+    form.render();
+    
+    // 搜索表单提交
+    form.on('submit(search)', function(data){
+        // 保留分页参数
+        var url = '{:url("feedback/index")}';
+        var query = $.param(data.field);
+        location.href = url + (query ? '?' + query : '');
+        return false;
+    });
+    
+    // 标记为已解决
+    $('.resolve').click(function(){
+        var id = $(this).data('id');
+        layer.confirm('确定要将此问题标记为已解决吗？', {
+            icon: 3,
+            title: '提示',
+            shade: [0.1, '#fff'],
+            btn: ['确定', '取消']
+        }, function(index){
+            $.get('{:url("feedback/resolve")}', {id: id}, function(res){
+                layer.close(index);
+                if(res.code == 1){
+                    layer.msg(res.msg, {
+                        icon: 1,
+                        time: 1200,
+                        shade: [0.1, '#fff']
+                    }, function(){
+                        location.reload();
+                    });
+                } else {
+                    layer.msg(res.msg || '操作失败', {
+                        icon: 2,
+                        time: 2000,
+                        shade: [0.1, '#fff']
+                    });
+                }
+            }, 'json');
+        });
+    });
+    
+    // 输入框获得焦点效果
+    $('.layui-input, .layui-select').focus(function() {
+        $(this).css({
+            'border-color': '#009688',
+            'box-shadow': '0 0 0 2px rgba(64, 158, 255, 0.2)'
+        });
+    }).blur(function() {
+        $(this).css({
+            'border-color': '#e6e6e6',
+            'box-shadow': 'none'
+        });
+    });
+    
+    // 表格行悬停效果
+    $('.layui-table tbody tr').hover(function() {
+        $(this).css('background-color', '#f9fafc');
+    }, function() {
+        $(this).css('background-color', '');
+    });
+});
+</script>
+{/block}

@@ -1,0 +1,793 @@
+{extend name="public/base" /}
+{block name="main"}
+<div class="layui-fluid" style="padding: 15px;">
+    <div class="layui-row layui-col-space15">
+        <div class="layui-col-md10 layui-col-md-offset1">
+            <!-- 页面标题区域 -->
+            <div class="page-header">
+                <div class="header-content">
+                    <div class="icon-wrapper">
+                        <i class="layui-icon layui-icon-survey"></i>
+                    </div>
+                    <div class="header-text">
+                        <h2>问题反馈</h2>
+                        <p>我们重视每一条反馈，您的意见将帮助我们做得更好</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layui-card feedback-card">
+                <div class="layui-card-body">
+                    <form class="layui-form feedback-form" action="{:url('feedback/submit')}" method="post" id="feedbackForm">
+                        
+                        <!-- 提交人信息 -->
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <i class="layui-icon layui-icon-username"></i>
+                                提交人
+                            </label>
+                            <div class="layui-input-block">
+                                <div class="user-info-box">
+                                    <div class="user-avatar">
+                                        <i class="layui-icon layui-icon-user"></i>
+                                    </div>
+                                    <span class="user-name">{$current_username|default='当前用户'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 问题标题 -->
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">
+                                <i class="layui-icon layui-icon-edit"></i>
+                                问题标题
+                                <span class="required">*</span>
+                            </label>
+                            <div class="layui-input-block">
+                                <input type="text" name="title" required lay-verify="required|title" 
+                                       placeholder="简明扼要地描述您的问题" autocomplete="off" 
+                                       class="layui-input input-enhanced">
+                                <div class="input-tip">
+                                    <i class="layui-icon layui-icon-tips"></i>
+                                    建议 5-100 个字符
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 问题内容 -->
+                        <div class="layui-form-item layui-form-text">
+                            <label class="layui-form-label">
+                                <i class="layui-icon layui-icon-file-b"></i>
+                                问题内容
+                                <span class="required">*</span>
+                            </label>
+                            <div class="layui-input-block">
+                                <textarea name="content" required lay-verify="required|content" 
+                                          placeholder="请详细描述您遇到的问题&#10;&#10;建议包含：&#10;1. 问题发生的具体操作步骤&#10;2. 出现的错误提示信息&#10;3. 您期望的正确结果&#10;4. 其他相关信息" 
+                                          class="layui-textarea textarea-enhanced"></textarea>
+                                <div class="char-counter">
+                                    <span class="current-length">0</span> / 1000 字符
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 温馨提示 -->
+                        <div class="tips-box">
+                            <div class="tips-header">
+                                <i class="layui-icon layui-icon-tips"></i>
+                                <strong>提交建议</strong>
+                            </div>
+                            <div class="tips-content">
+                                <div class="tip-item">
+                                    <i class="layui-icon layui-icon-ok-circle"></i>
+                                    <span>提供问题发生的具体操作步骤</span>
+                                </div>
+                                <div class="tip-item">
+                                    <i class="layui-icon layui-icon-ok-circle"></i>
+                                    <span>说明浏览器类型及版本（如 Chrome 95.0）</span>
+                                </div>
+                                <div class="tip-item">
+                                    <i class="layui-icon layui-icon-ok-circle"></i>
+                                    <span>附上系统截图或错误提示信息（如有）</span>
+                                </div>
+                                <div class="tip-item">
+                                    <i class="layui-icon layui-icon-ok-circle"></i>
+                                    <span>描述您期望的正确结果</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="layui-form-item form-actions">
+                            <div class="layui-input-block">
+                                <button class="layui-btn layui-btn-normal btn-submit" lay-submit lay-filter="formSubmit">
+                                    <i class="layui-icon layui-icon-release"></i>
+                                    提交问题
+                                </button>
+                                <button type="reset" class="layui-btn layui-btn-primary btn-reset">
+                                    <i class="layui-icon layui-icon-refresh"></i>
+                                    重置表单
+                                </button>
+                            </div>
+                        </div>
+                        
+                    </form>
+                </div>
+            </div>
+           
+        </div>
+    </div>
+</div>
+{/block}
+
+{block name="footer"}
+<style>
+    /* 全局变量 */
+    :root {
+        --primary-color: #1E9FFF;
+        --success-color: #5FB878;
+        --warning-color: #FFB800;
+        --danger-color: #FF5722;
+        --text-primary: #333;
+        --text-secondary: #666;
+        --text-muted: #999;
+        --border-color: #e6e6e6;
+        --bg-light: #f8f9fa;
+        --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+        --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+    }
+    
+    /* 页面头部 */
+    .page-header {
+        background: linear-gradient(135deg, #009688 0%, #009688 100%);
+        border-radius: var(--radius-lg);
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-md);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+    }
+    
+    .header-content {
+        display: flex;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .icon-wrapper {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: var(--radius-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 20px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .icon-wrapper i {
+        font-size: 36px;
+        color: #fff;
+    }
+    
+    .header-text h2 {
+        margin: 0;
+        color: #fff;
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .header-text p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 14px;
+    }
+    
+    /* 卡片样式 */
+    .feedback-card {
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        border: none;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .feedback-card:hover {
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .feedback-card .layui-card-body {
+        padding: 40px;
+    }
+    
+    /* 表单样式 */
+    .feedback-form .layui-form-item {
+        margin-bottom: 30px;
+        position: relative;
+    }
+    
+    .feedback-form .layui-form-label {
+        width: 120px;
+        text-align: left;
+        padding: 9px 0;
+        font-weight: 500;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .feedback-form .layui-form-label i {
+        font-size: 16px;
+        color: var(--primary-color);
+    }
+    
+    .feedback-form .layui-input-block {
+        /* margin-left: 130px; */
+    }
+    
+    .required {
+        color: var(--danger-color);
+        margin-left: 4px;
+        font-weight: bold;
+    }
+    
+    /* 用户信息框 */
+    .user-info-box {
+        display: inline-flex;
+        align-items: center;
+        background: linear-gradient(135deg, #009688 0%, #009688 100%);
+        padding: 12px 24px;
+        border-radius: var(--radius-md);
+        gap: 12px;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+    }
+    
+    .user-avatar i {
+        font-size: 20px;
+        color: #fff;
+    }
+    
+    .user-name {
+        color: #fff;
+        font-weight: 500;
+        font-size: 15px;
+    }
+    
+    /* 增强输入框 */
+    .input-enhanced,
+    .textarea-enhanced {
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        transition: all 0.3s ease;
+        font-size: 14px;
+        background: #fff;
+    }
+    
+    .input-enhanced {
+        height: 44px;
+        width: 97%;
+        display: block;
+        padding: 0 16px;
+    }
+    
+    .textarea-enhanced {
+        min-height: 200px;
+        width: 97%;
+        padding: 12px 16px;
+        resize: vertical;
+        line-height: 1.6;
+    }
+    
+    .input-enhanced:focus,
+    .textarea-enhanced:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(30, 159, 255, 0.1);
+        background: #fff;
+    }
+    
+    /* 输入提示 */
+    .input-tip {
+        margin-top: 8px;
+        color: var(--text-muted);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .input-tip i {
+        font-size: 14px;
+        color: var(--primary-color);
+    }
+    
+    /* 字符计数器 */
+    .char-counter {
+        text-align: right;
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+    
+    .char-counter .current-length {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+    
+    /* 温馨提示框 */
+    .tips-box {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin: 30px 0;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .tips-box::before {
+        content: '';
+        position: absolute;
+        top: -50px;
+        right: -50px;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+    }
+    
+    .tips-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        color: var(--text-primary);
+        font-size: 15px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .tips-header i {
+        font-size: 18px;
+        color: var(--primary-color);
+    }
+    
+    .tips-content {
+        display: grid;
+        gap: 12px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .tip-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    
+    .tip-item i {
+        font-size: 14px;
+        color: var(--success-color);
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+    
+    /* 操作按钮 */
+    .form-actions {
+        margin-top: 40px;
+        padding-top: 30px;
+        border-top: 2px dashed var(--border-color);
+    }
+    
+    .btn-submit,
+    .btn-reset {
+        height: 44px;
+        padding: 0 32px;
+        border-radius: var(--radius-md);
+        font-size: 15px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-submit {
+        background: linear-gradient(135deg, #009688 0%, #009688 100%);
+        border: none;
+    }
+    
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .btn-reset {
+        background: #fff;
+        border: 2px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    .btn-reset:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background: rgba(30, 159, 255, 0.05);
+    }
+    
+    .btn-submit i,
+    .btn-reset i {
+        margin-right: 6px;
+        font-size: 16px;
+    }
+    
+    /* 底部提示 */
+    .bottom-notice {
+        text-align: center;
+        padding: 16px;
+        background: rgba(30, 159, 255, 0.05);
+        border-radius: var(--radius-md);
+        color: var(--primary-color);
+        font-size: 13px;
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .bottom-notice i {
+        font-size: 16px;
+    }
+    
+    /* 响应式设计 */
+    @media screen and (max-width: 768px) {
+        .page-header {
+            padding: 20px;
+        }
+        
+        .header-content {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .icon-wrapper {
+            margin-right: 0;
+            margin-bottom: 15px;
+        }
+        
+        .header-text h2 {
+            font-size: 22px;
+        }
+        
+        .feedback-card .layui-card-body {
+            padding: 20px;
+        }
+        
+        .feedback-form .layui-form-label {
+            width: 100%;
+            padding: 9px 0 5px 0;
+        }
+        
+        .feedback-form .layui-input-block {
+            margin-left: 0;
+        }
+        
+        .user-info-box {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .tips-box {
+            padding: 16px;
+        }
+        
+        .form-actions .layui-input-block {
+            text-align: center;
+        }
+        
+        .btn-submit,
+        .btn-reset {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    }
+    
+    /* 动画效果 */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .feedback-card {
+        animation: slideInUp 0.5s ease;
+    }
+    
+    .page-header {
+        animation: slideInUp 0.3s ease;
+    }
+  /* 添加更醒目的成功提示样式 */
+    .submit-success-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #5FB878, #5FB878);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        animation: fadeIn 0.3s ease, fadeOut 0.3s 2.7s ease forwards;
+        max-width: 300px;
+    }
+    
+    .submit-success-notification .icon {
+        margin-right: 10px;
+        font-size: 20px;
+    }
+    
+    .submit-success-notification .message {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; transform: translateY(-10px); }
+    }
+    
+</style>
+<script>
+// 全局初始化标志，防止重复执行
+if (typeof FEEDBACK_SUBMIT_INITIALIZED === 'undefined') {
+    var FEEDBACK_SUBMIT_INITIALIZED = true;
+    
+    // 创建一个函数来显示成功通知
+    function showSuccessNotification(message) {
+        // 移除可能存在的旧通知
+        $('.submit-success-notification').remove();
+        
+        // 创建新的通知
+        var notification = $('<div class="submit-success-notification">' +
+            '<span class="icon"><i class="layui-icon layui-icon-ok-circle"></i></span>' +
+            '<span class="message">' + (message || '提交成功！您可以继续填写新的问题反馈') + '</span>' +
+            '</div>');
+        
+        $('body').append(notification);
+        
+        // 3秒后自动消失
+        setTimeout(function() {
+            notification.remove();
+        }, 3000);
+    }
+    
+    layui.use(['form', 'layer'], function(){
+        var form = layui.form;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+        
+        // 确保只初始化一次
+        if (typeof FEEDBACK_SUBMIT_FORM_INITIALIZED === 'undefined') {
+            FEEDBACK_SUBMIT_FORM_INITIALIZED = true;
+            
+            // 字符计数器
+            var textarea = $('textarea[name="content"]');
+            var charCounter = $('.current-length');
+            
+            textarea.on('input', function() {
+                var length = $(this).val().length;
+                charCounter.text(length);
+                
+                if (length > 1000) {
+                    charCounter.css('color', 'var(--danger-color)');
+                } else if (length > 800) {
+                    charCounter.css('color', 'var(--warning-color)');
+                } else {
+                    charCounter.css('color', 'var(--primary-color)');
+                }
+            });
+            
+            // 自定义验证规则
+            form.verify({
+                title: function(value) {
+                    if (value.length < 5) {
+                        return '标题至少需要 5 个字符';
+                    }
+                    if (value.length > 100) {
+                        return '标题不能超过 100 个字符';
+                    }
+                },
+                content: function(value) {
+                    if (value.length < 10) {
+                        return '问题描述至少需要 10 个字符';
+                    }
+                    if (value.length > 1000) {
+                        return '问题描述不能超过 1000 个字符';
+                    }
+                }
+            });
+            
+            // 表单提交
+            form.on('submit(formSubmit)', function(data){
+                // 验证表单
+                var title = $('input[name="title"]').val().trim();
+                var content = $('textarea[name="content"]').val().trim();
+                
+                if (!title) {
+                    layer.msg('问题标题不能为空', {icon: 2, time: 1500});
+                    return false;
+                }
+                
+                if (!content) {
+                    layer.msg('问题内容不能为空', {icon: 2, time: 1500});
+                    return false;
+                }
+                
+                var loadIndex = layer.load(2, {
+                    shade: [0.3, '#000'],
+                    content: '正在提交...',
+                    success: function(layero) {
+                        layero.find('.layui-layer-content').css({
+                            'padding-top': '40px',
+                            'width': '70px'
+                        });
+                    }
+                });
+                
+                // 确保没有重复请求
+                if (typeof submitRequestLock !== 'undefined' && submitRequestLock) {
+                    layer.close(loadIndex);
+                    return false;
+                }
+                submitRequestLock = true;
+                
+                $.ajax({
+                    url: data.form.action,
+                    type: 'POST',
+                    data: data.field,
+                    dataType: 'json',
+                    success: function(res) {
+                        submitRequestLock = false;
+                        layer.close(loadIndex);
+                        
+                        // 确保res是对象
+                        if (typeof res !== 'object' || res === null) {
+                            try {
+                                res = JSON.parse(res);
+                            } catch (e) {
+                                res = {code: 0, msg: '服务器返回了无效的响应格式'};
+                            }
+                        }
+                        
+                        if (res.code == 1) {
+                            // 清空标题和内容，保留用户名
+                            $('input[name="title"]').val('');
+                            $('textarea[name="content"]').val('');
+                            charCounter.text('0');
+                            
+                            // 显示成功提示
+                            layer.msg(res.msg || '提交成功', {
+                                icon: 1,
+                                time: 1500,
+                                shade: 0.3
+                            }, function() {
+                               // 显示自定义通知
+     showSuccessNotification('提交成功！3秒后跳转到问题列表...');
+     // 3秒后跳转到列表页面
+     setTimeout(function() {
+         window.location.href = "{:url('feedback/index')}";
+     }, 3000);
+                            });
+                        } else {
+                            layer.msg(res.msg || '提交失败，请重试', {
+                                icon: 2,
+                                time: 2000,
+                                shade: 0.3
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        submitRequestLock = false;
+                        layer.close(loadIndex);
+                        
+                        var errorMsg = '网络请求失败';
+                        if (xhr.responseJSON && xhr.responseJSON.msg) {
+                            errorMsg = xhr.responseJSON.msg;
+                        } else if (xhr.responseText) {
+                            try {
+                                var res = JSON.parse(xhr.responseText);
+                                if (res.msg) errorMsg = res.msg;
+                            } catch (e) {
+                                errorMsg = '服务器返回了错误的响应格式';
+                            }
+                        }
+                        
+                        layer.msg(errorMsg, {
+                            icon: 2,
+                            time: 2000,
+                            shade: 0.3
+                        });
+                        
+                        console.error('AJAX Error:', {
+                            status: status,
+                            error: error,
+                            responseText: xhr.responseText,
+                            statusText: xhr.statusText
+                        });
+                    }
+                });
+                
+                return false;
+            });
+            
+            // 重置表单
+            $('button[type="reset"]').on('click', function() {
+                setTimeout(function() {
+                    charCounter.text('0').css('color', 'var(--primary-color)');
+                    
+                    // 添加重置成功提示
+                    layer.msg('表单已重置', {
+                        icon: 1,
+                        time: 1000,
+                        shade: 0.3
+                    });
+                }, 10);
+            });
+            
+            // 输入框聚焦效果
+            $(document).off('focus blur', '.input-enhanced, .textarea-enhanced').on({
+                focus: function() {
+                    $(this).closest('.layui-form-item').addClass('focused');
+                },
+                blur: function() {
+                    $(this).closest('.layui-form-item').removeClass('focused');
+                }
+            }, '.input-enhanced, .textarea-enhanced');
+        }
+    });
+} else {
+    console.log('Feedback submit script already initialized, skipping...');
+}
+</script>
+{/block}
