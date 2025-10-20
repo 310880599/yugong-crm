@@ -3,12 +3,34 @@
     <fieldset class="layui-elem-field layui-field-title">
         <legend>{:lang('admin')}{:lang('list')}</legend>
     </fieldset>
+    <!-- 搜索区域 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <form class="layui-form" action="">
+                <div class="layui-form-item">
+                    <div class="layui-inline">
+                        <label class="layui-form-label">用户名</label>
+                        <div class="layui-input-inline">
+                            <input type="text" name="username" id="username" placeholder="请输入用户名" autocomplete="off" class="layui-input">
+                        </div>
+                    </div>
+                    <div class="layui-inline">
+                        <button class="layui-btn" lay-submit lay-filter="searchForm">搜索</button>
+                        <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
     <table class="layui-table" id="list" lay-filter="list"></table>
 </div>
 
 {include file="common/foot"/}
 <script type="text/html" id="barDemo">
     <a href="{:url('adminEdit')}?admin_id={{d.admin_id}}" class="layui-btn layui-btn-xs">{:lang('edit')}</a>
+    {{# if("{:session('aid')}"=="1"){ }}
+       <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="access">额外权限</a>
+    {{# } }}
     {{# if(d.admin_id==1){ }}
     <a href="#" class="layui-btn layui-btn-xs layui-btn-disabled">{:lang('del')}</a>
     {{# }else{  }}
@@ -27,61 +49,80 @@
    <a href="{:url('adminAdd')}" class="layui-btn layui-btn-sm">{:lang('add')}{:lang('admin')}</a>
 </script>
 <script>
-    layui.use(['table','form'], function() {
-        var table = layui.table,form = layui.form,$ = layui.jquery;
+    layui.use(['table', 'form'], function () {
+        var table = layui.table, form = layui.form, $ = layui.jquery;
         var tableIn = table.render({
             elem: '#list',
             url: '{:url("adminList")}',
-            method:'post',
-			toolbar: '#topBtn',
-			title:'{:lang("admin")}{:lang("list")}',
+            method: 'post',
+            toolbar: '#topBtn',
+            title: '{:lang("admin")}{:lang("list")}',
+            where: {
+                val: $('#username').val()
+            },
             cols: [[
-                {field:'admin_id', title: '编号', width:60,fixed: true}
-                ,{field:'username', title: '用户名', width:80}
-				,{field:'title', title: '{:lang("userGroup")}', width:200}
+                { field: 'admin_id', title: '编号', width: 60, fixed: true }
+                , { field: 'username', title: '用户名', width: 80 }
+                , { field: 'title', title: '{:lang("userGroup")}', width: 200 }
                 // ,{field:'email', title: '邮箱', width:200}
-                ,{field: 'parent_id', title: '上级主管', width: 200}
-                ,{field: 'team_name', title: '团队名称', width: 200}
-                ,{field: 'mubiao', title: '业绩月目标', width: 200}
-                ,{field: 'ticheng', title: '提成点%', width: 200}
-                ,{field:'tel', title: '{:lang("tel")}', width:150}
-                ,{field:'ip', title: '{:lang("ip")}',width:150,hide:true}
-                ,{field:'is_open', title: '{:lang("status")}',width:150,toolbar: '#open'}
-                ,{width:160, align:'center', toolbar: '#barDemo'}
+                , { field: 'parent_id', title: '上级主管', width: 200 }
+                , { field: 'team_name', title: '团队名称', width: 200 }
+                , { field: 'mubiao', title: '业绩月目标', width: 200 }
+                , { field: 'ticheng', title: '提成点%', width: 200 }
+                , { field: 'tel', title: '{:lang("tel")}', width: 150 }
+                , { field: 'ip', title: '{:lang("ip")}', width: 150, hide: true }
+                , { field: 'is_open', title: '{:lang("status")}', width: 150, toolbar: '#open' }
+                , { width: 160, align: 'center', toolbar: '#barDemo' }
             ]]
         });
-        form.on('switch(open)', function(obj){
-            loading =layer.load(1, {shade: [0.1,'#fff']});
+        // 监听搜索表单提交
+        form.on('submit(searchForm)', function(data){
+            // 重新加载表格，传入搜索参数
+            tableIn.reload({
+                where: {
+                    val: data.field.username
+                },
+                page: {
+                    curr: 1 // 重新从第 1 页开始
+                }
+            });
+            return false; // 阻止表单跳转
+        });
+        form.on('switch(open)', function (obj) {
+            loading = layer.load(1, { shade: [0.1, '#fff'] });
             var id = this.value;
-            var is_open = obj.elem.checked===true?1:0;
-            $.post('{:url("adminState")}',{'id':id,'is_open':is_open},function (res) {
+            var is_open = obj.elem.checked === true ? 1 : 0;
+            $.post('{:url("adminState")}', { 'id': id, 'is_open': is_open }, function (res) {
                 layer.close(loading);
-                if (res.status==1) {
+                if (res.status == 1) {
                     tableIn.reload();
-                }else{
-                    layer.msg(res.msg,{time:1000,icon:2});
+                } else {
+                    layer.msg(res.msg, { time: 1000, icon: 2 });
                     return false;
                 }
             })
         });
-        table.on('tool(list)', function(obj){
+        table.on('tool(list)', function (obj) {
             var data = obj.data;
-            if(obj.event === 'del'){
-                layer.confirm('{:lang("Are you sure you want to delete it")}', function(index){
-                    $.post("{:url('adminDel')}",{admin_id:data.admin_id},function(res){
-                        if(res.code==1){
-                            layer.msg(res.msg,{time:1000,icon:1});
+            if (obj.event === 'del') {
+                layer.confirm('{:lang("Are you sure you want to delete it")}', function (index) {
+                    $.post("{:url('adminDel')}", { admin_id: data.admin_id }, function (res) {
+                        if (res.code == 1) {
+                            layer.msg(res.msg, { time: 1000, icon: 1 });
                             obj.del();
-                        }else{
-                            layer.msg(res.msg,{time:1000,icon:2});
+                        } else {
+                            layer.msg(res.msg, { time: 1000, icon: 2 });
                         }
                     });
                     layer.close(index);
                 });
+            } else if (obj.event === 'access') {
+                location.href = '{:url("adminAccess")}?id=' + data.admin_id;
             }
         });
 
     });
 </script>
 </body>
+
 </html>

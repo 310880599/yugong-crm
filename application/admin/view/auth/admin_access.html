@@ -1,0 +1,112 @@
+{include file="common/head"/}
+<link rel="stylesheet" href="/static/plugins/zTree/css/zTreeStyle.css" type="text/css">
+<div class="admin-main layui-anim layui-anim-upbit">
+    <fieldset class="layui-elem-field">
+        <legend>管理员权限配置</legend>
+        <div class="layui-field-box">
+            <form class="layui-form layui-form-pane">
+                <div class="layui-form-item" style="margin-bottom: 15px;">
+                    <div class="layui-form-mid layui-word-aux" style="display: block; text-align: center; margin-bottom: 10px;">
+                        <span style="color: #009688;">■</span> 用户组权限 &nbsp;&nbsp;
+                        <span style="color: #000;">■</span> 额外权限
+                    </div>
+                </div>
+                <ul id="tree" class="ztree"></ul>
+                <div class="layui-form-item text-center" style="margin-top: 15px;">
+                    <input type="hidden" name="admin_id" value="{$admin_id}">
+                    <button type="button" class="layui-btn" lay-submit="" lay-filter="submit">{:lang('submit')}</button>
+                    <button class="layui-btn layui-btn-danger" type="button" onclick="window.history.back()">{:lang('back')}</button>
+                </div>
+            </form>
+        </div>
+    </fieldset>
+</div>
+{include file="common/foot"/}
+<script type="text/javascript" src="/static/common/js/jquery.2.1.1.min.js"></script>
+<script type="text/javascript" src="/static/plugins/zTree/js/jquery.ztree.core.min.js"></script>
+<script type="text/javascript" src="/static/plugins/zTree/js/jquery.ztree.excheck.min.js"></script>
+<script>
+    var setting = {
+        check: {
+            enable: true,
+            chkboxType: { "Y": "ps", "N": "ps" }
+        },
+        view: {
+            showLine: false, 
+            showIcon: false, 
+            dblClickExpand: false,
+            fontCss: function(treeId, treeNode) {
+                // 用户组权限显示为蓝色，额外权限显示为绿色
+                if (treeNode.group_rule) {
+                    return {color: "#009688"};
+                } else {
+                    return {color: "#000"};
+                }
+            }
+        },
+        data: {
+            simpleData: {
+                enable: true,
+                idKey: "id",
+                pIdKey: "pid",
+                rootPId: 0
+            },
+            key: {
+                name: "title"
+            }
+        }
+    };
+    
+    var zNodes = {$data|raw};
+    
+    function setCheck() {
+        var zTree = $.fn.zTree.getZTreeObj("tree");
+        zTree.setting.check.chkboxType = { "Y":"ps", "N":"ps"};
+    }
+    
+    $.fn.zTree.init($("#tree"), setting, zNodes);
+    setCheck();
+    
+    layui.use(['form', 'layer'], function() {
+        var form = layui.form,
+            layer = layui.layer,
+            $ = layui.jquery;
+        
+        form.on('submit(submit)', function() {
+            var loading = layer.load(1, {shade: [0.1, '#fff']});
+            var treeObj = $.fn.zTree.getZTreeObj("tree"),
+                nodes = treeObj.getCheckedNodes(true),
+                rules = [];
+            
+            for(var i = 0; i < nodes.length; i++) {
+                if (nodes[i].id > 0) {
+                    rules.push(nodes[i].id);
+                }
+            }
+            
+            if (rules.length == 0) {
+                layer.close(loading);
+                layer.msg('请选择权限规则', {icon: 2});
+                return false;
+            }
+            
+            var postData = {
+                admin_id: $('input[name=admin_id]').val(),
+                rules: rules.join(',')
+            };
+            
+            $.post("{:url('adminSetaccess')}", postData, function(res) {
+                layer.close(loading);
+                if (res.code > 0) {
+                    layer.msg(res.msg, {time: 1800, icon: 1}, function() {
+                        location.href = res.url;
+                    });
+                } else {
+                    layer.msg(res.msg, {time: 1800, icon: 2});
+                }
+            });
+            
+            return false;
+        });
+    });
+</script>

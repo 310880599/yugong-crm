@@ -52,4 +52,33 @@ class Admin extends Model
         return $info;
     }
     // 验证码检查方法已移除
+
+    // 获取管理员的所有权限（用户组权限+额外权限）
+    public static function getAdminRules($admin_id)
+    {
+        $admin = self::get($admin_id);
+        if (!$admin) {
+            return '';
+        }
+
+        // 获取用户组权限
+        $group_rules = db('auth_group')->where('group_id', $admin['group_id'])->value('rules');
+
+        // 获取额外权限
+        $extra_rules = $admin['extra_rules'] ? $admin['extra_rules'] : '';
+
+        // 合并权限
+        if ($group_rules && $extra_rules) {
+            $group_rules_arr = explode(',', $group_rules);
+            $extra_rules_arr = explode(',', $extra_rules);
+            $all_rules = array_unique(array_merge($group_rules_arr, $extra_rules_arr));
+            return implode(',', $all_rules);
+        } else if ($group_rules) {
+            return $group_rules;
+        } else if ($extra_rules) {
+            return $extra_rules;
+        }
+
+        return '';
+    }
 }

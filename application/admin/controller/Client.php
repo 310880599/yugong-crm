@@ -1912,4 +1912,72 @@ class Client extends Common
         $redis->del($statusKey);
         $redis->del($resultKey);
     }
+
+   public function editRecord()
+    {
+        $id = Request::param('id');
+        if (empty($id)) {
+            return json(['code' => 500, 'msg' => '缺少客户ID', 'data' => []]);
+        }
+        
+        // 获取客户基本信息
+        $clientInfo = Db::name('crm_leads')->where('id', $id)->find();
+        if (empty($clientInfo)) {
+            return json(['code' => 500, 'msg' => '客户不存在', 'data' => []]);
+        }
+        
+        // 将客户ID传递给视图
+        $this->assign('leads_id', $id);
+        $this->assign('client_info', $clientInfo);
+        
+        return $this->fetch('client/edit_record');
+    }
+    
+    /**
+     * 获取客户编辑记录列表（用于异步加载表格数据）
+     */
+    public function getEditRecords()
+    {
+        $leadsId = Request::param('leads_id');
+        $keyword = Request::param('keyword', '');
+        $page = Request::param('page/d', 1);
+        $limit = Request::param('limit/d', 10);
+        
+        if (empty($leadsId)) {
+            return json(['code' => 500, 'msg' => '缺少客户ID', 'data' => [], 'count' => 0]);
+        }
+        
+        // 构建查询
+        $query = Db::table('crm_operation_log')
+            ->where('leads_id', $leadsId);
+            
+        // 如果有关键词，添加搜索条件
+        if (!empty($keyword)) {
+            $query->where(function($q) use ($keyword) {
+                $q->where('oper_type', 'like', "%{$keyword}%")
+                  ->whereOr('oper_user', 'like', "%{$keyword}%")
+                  ->whereOr('description', 'like', "%{$keyword}%");
+            });
+        }
+        
+        // 获取总数
+        $count = $query->count();
+        
+        // 获取分页数据
+        $list = $query->order('created_at', 'desc')
+            ->page($page, $limit)
+            ->select();
+            
+        // 处理时间格式
+        foreach ($list as &$item) {
+            $item['created_at'] = strtotime($item['created_at']);
+        }
+        
+        return json([
+            'code' => 0,
+            'msg' => '获取成功',
+            'data' => $list,
+            'count' => $count
+        ]);
+    }
 }

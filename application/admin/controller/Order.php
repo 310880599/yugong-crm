@@ -335,6 +335,7 @@ class Order extends Common
         $client_where = [];
         //判断权限
         $user = \app\admin\model\Admin::getMyInfo();
+        if(!in_array($user['group_id'],[$this->ywgid,$this->ywzgid]))$user['team_name']='';
         $team_name = $user['team_name'] ?? '';
         if ($team_name) $where[] = ['team_name', '=', $team_name];
         $page = input('page') ?? 1;

@@ -121,8 +121,7 @@
         var info = {$info|raw};
         var is_admin = "{$result['is_admin']}";
         var is_position = "{$result['is_position']}";
-        var channel = "{$result['channel']}";
-
+        var channel = {$result['channel']|json_encode|raw};
         form.val("form", info);
         if (info) {
             $('#adPic').attr('src', info.avatar);
@@ -141,9 +140,15 @@
                         + '<option value="">请选择渠道</option>';
 
                     // 动态添加渠道选项
-
+                    var channelMatch = false;
+                    if (Array.isArray(channel)) {
+                        channelMatch = channel.includes(item.name);
+                    } else {
+                        channelMatch = (channel && item.name == channel);
+                    }
                     $.each(res.data, function (index, item) {
                         sel = '';
+
                         if ((info && item.name == info.channel) || (channel && item.name == channel)) {
                             sel = 'selected class="layui-this"'
                         }
@@ -193,8 +198,21 @@
                         + '<label class="layui-form-label">所属渠道</label>'
                         + '<div class="layui-input-4">'
                         + '<select name="channel" lay-verify="required">'
-                        + '<option value="' + channel + '" selected>' + channel + '</option>'
-                        + '</select></div></div>';
+                        // + '<option value="' + channel + '" selected>' + channel + '</option>'
+                        // + '</select></div></div>';
+
+                    // 如果channel是数组，添加所有选项
+                    if (Array.isArray(channel)) {
+                        channelHtml +=  '<option value="" selected>请选择渠道</option>';
+                        $.each(channel, function(index, item) {
+                            select = info.channel==item?'selected':'';
+                            channelHtml += '<option value="' + item + '"  '+select+'>' + item + '</option>';
+                        });
+                    } else if (channel) {
+                        // 如果channel是字符串，添加单个选项
+                        channelHtml += '<option value="' + channel + '" selected>' + channel + '</option>';
+                    }
+                    channelHtml += '</select></div></div>';
                     $formItem.after(channelHtml);
                     form.val("form", info.org);
                     form.render('select', 'channel'); // 重新渲染表单

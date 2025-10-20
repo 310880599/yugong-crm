@@ -35,7 +35,15 @@ class Auth extends Common
         return false;
     }
 
-
+    private function getChannel($current_admin){
+        if($current_admin['channel'] ){
+            if($current_admin['channel'] == 'AM'){
+                return ['AM','MIC'];
+            }
+            return $current_admin['channel'];
+        }
+        return '';
+    }
     //管理员列表
     public function adminList()
     {
@@ -47,17 +55,17 @@ class Auth extends Common
             // 获取当前用户信息
             $admin_id = session('aid');
             $current_admin = Admin::get($admin_id);
-            if(!$current_admin){
+            if (!$current_admin) {
                 return $result = ['code' => 0, 'msg' => '用户不存在'];
             }
             // 构建查询条件
             $map = [];
             $where = [];
             if ($val) {
-                $map['username'] = ['like', "%" . $val . "%"];
+                $where[] = ['username','like', "%" . $val . "%"];
             }
             if ($current_admin['group_id'] != 1 && $current_admin['org'] != 'admin') {
-                $where[]=$this->getOrgWhere($current_admin['org']);
+                $where[] = $this->getOrgWhere($current_admin['org']);
             }
             // 权限控制逻辑
             if ($current_admin['group_id'] == 11) {
@@ -75,7 +83,7 @@ class Auth extends Common
                     if ($current_admin['position'] == 0) {
                         $map['admin_id'] = $admin_id;
                     } elseif ($current_admin['position'] == 2) {
-                        $map['channel'] = $current_admin['channel'];
+                        $map['channel'] = $this->getChannel($current_admin);
                     }
                 } else {
                     // 如果team_name为空，只显示自己
@@ -116,7 +124,7 @@ class Auth extends Common
             $data['is_open'] = 1;
             $data['add_time'] = time();
             $data['ip'] = request()->ip();
-            if($data['org'])$data['org'] = $this->org_fgx . implode($this->org_fgx , $data['org']) .$this->org_fgx  ;
+            if ($data['org']) $data['org'] = $this->org_fgx . implode($this->org_fgx, $data['org']) . $this->org_fgx;
             //验证
             $msg = $this->validate($data, 'app\admin\validate\Admin');
             if ($msg != 'true') {
@@ -152,7 +160,7 @@ class Auth extends Common
             // 组织列表
             $orgList = self::ORG;
             // 查询用户组
-            if ($current_admin['group_id'] == 1 || strpos($current_admin['org'],'admin') !== false) {
+            if ($current_admin['group_id'] == 1 || strpos($current_admin['org'], 'admin') !== false) {
                 // 超级管理员可以显示所有用户组
                 $auth_group = AuthGroup::all();
             } else {
@@ -166,7 +174,7 @@ class Auth extends Common
                     $auth_group = AuthGroup::where('group_id', '=', 10)->select();
                 }
             }
-            $result['channel'] = $current_admin['channel'] ?? "";
+            $result['channel'] =$this->getChannel($current_admin);
             $result['username'] = $current_admin['username'] ?? "";
             $result['is_admin'] = $current_admin['group_id'] == 1 ? 1 : 0;
             $result['is_position'] = $current_admin['position'] == 1 ? 1 : 0;
@@ -273,7 +281,7 @@ class Auth extends Common
             if ($msg != 'true') {
                 return $result = ['code' => 0, 'msg' => $msg];
             }
-            if($data['org'])$data['org'] = $this->org_fgx . implode($this->org_fgx , $data['org']) .$this->org_fgx  ;
+            if ($data['org']) $data['org'] = $this->org_fgx . implode($this->org_fgx, $data['org']) . $this->org_fgx;
             // 开启事务（可选）
             Db::startTrans();
             try {
@@ -317,7 +325,7 @@ class Auth extends Common
             $this->assign('leaderList', $leaderList);
             // 组织列表
             $orgList = self::ORG;
-            if ($current_admin['group_id'] == 1 || strpos($current_admin['org'],'admin') !== false) {
+            if ($current_admin['group_id'] == 1 || strpos($current_admin['org'], 'admin') !== false) {
                 // 超级管理员可以显示所有用户组
                 $auth_group = AuthGroup::all();
             } else {
@@ -330,7 +338,7 @@ class Auth extends Common
                 }
             }
             $result['is_yy'] = $current_admin['group_id'] == $this->yygid ? 1 : 0;
-            $result['channel'] = $current_admin['channel'] ?? "";
+            $result['channel'] =$this->getChannel($current_admin);
             $result['is_admin'] = $current_admin['group_id'] == 1 ? 1 : 0;
             $result['is_position'] = $current_admin['position'] == 1 ? 1 : 0;
             $info['org'] = $this->getOrg($info['org']);
@@ -562,5 +570,101 @@ class Auth extends Common
         }
 
         return json(['code' => 1, 'msg' => '获取成功!', 'data' => $channels]);
+    }
+    //管理员权限配置
+    public function adminAccess()
+    {
+        $nav = new Leftnav();
+        $admin_rule = db('auth_rule')->field('id,pid,title')->order('sort asc')->select();
+        $admin_id = input('id');
+
+        // 获取管理员信息
+        $admin_info = db('admin')->where('admin_id', $admin_id)->find();
+        if (!$admin_info) {
+            $this->error('管理员不存在');
+        }
+
+        // 获取用户组权限
+        $group_rules = db('auth_group')->where('group_id', $admin_info['group_id'])->value('rules');
+        $group_rules = $group_rules ? $group_rules : '';
+
+        // 获取管理员额外权限
+        $extra_rules = $admin_info['extra_rules'] ? $admin_info['extra_rules'] : '';
+
+        // 合并权限用于显示
+        $rules = '';
+        if ($group_rules && $extra_rules) {
+            $group_rules_arr = explode(',', $group_rules);
+            $extra_rules_arr = explode(',', $extra_rules);
+            $all_rules = array_unique(array_merge($group_rules_arr, $extra_rules_arr));
+            $rules = implode(',', $all_rules);
+        } else if ($group_rules) {
+            $rules = $group_rules;
+        } else if ($extra_rules) {
+            $rules = $extra_rules;
+        }
+
+        $arr = $nav->auth($admin_rule, $pid = 0, $rules);
+        $arr[] = array(
+            "id" => 0,
+            "pid" => 0,
+            "title" => "全部",
+            "open" => true
+        );
+
+        // 标记用户组权限，用于前端区分
+        $group_rules_arr = $group_rules ? explode(',', $group_rules) : [];
+        foreach ($arr as &$item) {
+            if ($item['id'] > 0 && in_array($item['id'], $group_rules_arr)) {
+                $item['group_rule'] = true;
+            } else {
+                $item['group_rule'] = false;
+            }
+        }
+
+
+        $this->assign('admin_id', $admin_id);
+        $this->assign('group_rules', $group_rules);
+        $this->assign('data', json_encode($arr, true));
+        return $this->fetch('admin_access');
+    }
+
+    //保存管理员权限配置
+    public function adminSetaccess()
+    {
+        $rules = input('post.rules');
+        $admin_id = input('post.admin_id');
+
+        if (empty($rules)) {
+            return array('msg' => '请选择权限!', 'code' => 0);
+        }
+
+        // 获取管理员信息
+        $admin_info = db('admin')->where('admin_id', $admin_id)->find();
+        if (!$admin_info) {
+            return array('msg' => '管理员不存在!', 'code' => 0);
+        }
+
+        // 获取用户组权限
+        $group_rules = db('auth_group')->where('group_id', $admin_info['group_id'])->value('rules');
+        $group_rules = $group_rules ? explode(',', $group_rules) : [];
+
+        // 计算额外权限（总权限减去用户组权限）
+        $all_rules = explode(',', $rules);
+        $extra_rules = array_diff($all_rules, $group_rules);
+        $extra_rules_str = implode(',', $extra_rules);
+
+        // 更新管理员的额外权限
+        $data['extra_rules'] = $extra_rules_str;
+        $where['admin_id'] = $admin_id;
+
+        if (db('admin')->where($where)->update($data)) {
+            // 清除权限缓存
+            cache('authRule', NULL);
+            cache('authRuleList', NULL);
+            return array('msg' => '权限配置成功!', 'url' => url('adminList'), 'code' => 1);
+        } else {
+            return array('msg' => '保存错误', 'code' => 0);
+        }
     }
 }

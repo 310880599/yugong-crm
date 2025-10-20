@@ -1,0 +1,399 @@
+{include file="common/head"/}
+<style>
+    .filtrate-warp {
+        margin-bottom: 10px;
+    }
+
+    .filtrate-warp .title {
+        padding: 5px 12px 7px 12px;
+        font-size: 14px;
+        font-weight: normal;
+        text-align: left;
+        cursor: pointer;
+        width: 90px;
+        background-color: transparent !important;
+        color: black !important;
+    }
+
+    .filtrate-warp .title:hover {
+        color: black;
+    }
+
+    .filtrate-warp .flag {
+        padding: 6px 12px 6px 12px;
+        cursor: pointer;
+    }
+
+    .filtrate-warp .flag:hover {
+        color: black;
+    }
+
+    .filtrate-warp .layui-badge:hover {
+        color: white !important;
+    }
+
+    .box-search {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .input-box {
+        width: 100% !important;
+    }
+
+    .description-content {
+        max-width: 100%;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        word-wrap: normal;
+        cursor: pointer;
+        position: relative;
+        display: inline-block;
+    }
+
+    .client-info {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f8f8f8;
+        border-radius: 4px;
+    }
+
+    .client-info h3 {
+        margin: 0 0 10px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e6e6e6;
+        color: #333;
+    }
+
+    .client-info p {
+        margin: 5px 0;
+        color: #666;
+    }
+
+    .detail-content {
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 10px;
+        background-color: #f9f9f9;
+        border: 1px solid #e6e6e6;
+        border-radius: 4px;
+    }
+
+    .detail-item {
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #eee;
+    }
+
+    .detail-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .detail-label {
+        font-weight: bold;
+        color: #333;
+        display: inline-block;
+        width: 80px;
+    }
+    .detail-value {
+        margin-right:10px;
+        padding-right: 10px;
+        box-shadow: 5px 0 15px rgba(0, 0, 0, 0.3); 
+    }
+</style>
+</head>
+
+<body class="skin-<?php if(!empty($_COOKIE['skin'])){echo $_COOKIE['skin'];}else{echo '0';setcookie('skin','0');}?>">
+    <div class="admin-main layui-anim layui-anim-upbit">
+        <a href="javascript:window.history.back(-1)" class="layui-btn layui-btn-primary">返回上一页</a>
+
+        <!-- 客户基本信息 -->
+        {if isset($client_info)}
+        <div class="client-info">
+            <h3>客户基本信息</h3>
+            <p><span class="detail-label">客户ID：</span>{$client_info.id}</p>
+            <p><span class="detail-label">客户名称：</span>{$client_info.kh_name}</p>
+            <p><span class="detail-label">客户来源：</span>{$client_info.kh_status}</p>
+            <p><span class="detail-label">负责人：</span>{$client_info.pr_user}</p>
+        </div>
+        {/if}
+
+        <fieldset class="layui-elem-field ">
+            <legend>客户编辑记录</legend>
+            <div class="layui-card" style="box-shadow: none;margin-top: 10px">
+                <div class="layui-form layui-card-header layuiadmin-card-header-auto"
+                    style="border-bottom: transparent;height: auto">
+
+                    <div class="layui-form-item" style="text-align: left;padding-left: 20px;">
+                        <div class="layui-inline  box-search">
+                            <label class="layui-form-label"></label>
+                            <div class="layui-input-inline input-box">
+                                <input type="text" id="keyword" name="keyword" placeholder="输入操作类型/操作人员/描述"
+                                    autocomplete="off" value="{$keyword}" class="layui-input">
+                            </div>
+                            <div class="layui-inline" style="float: right;">
+                                <button class="layui-btn layuiadmin-btn-list" lay-submit="" lay-filter="search">
+                                    <i class="layui-icon layui-icon-search layuiadmin-button-btn"
+                                        style="vertical-align: sub;"></i>查询数据
+                                </button>
+                                <button class="layui-btn layui-btn-primary" id="reset">
+                                    <i class="layui-icon layui-icon-refresh-1 layuiadmin-button-btn"
+                                        style="vertical-align: sub;"></i>重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </fieldset>
+        <table class="layui-table" id="table-list" lay-filter="table-list"></table>
+
+        <!-- 操作模板 -->
+        <script type="text/html" id="action">
+      <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail"><i class="layui-icon">&#xe60b;</i>查看详情</a>
+    </script>
+
+        <!-- 描述内容模板 -->
+        <script type="text/html" id="descriptionTpl">
+      <div class="description-content" title="{{d.description}}">{{d.description || '无描述'}}</div>
+    </script>
+
+        <!-- 操作类型模板 -->
+        <script type="text/html" id="operTypeTpl">
+      {{# if(d.oper_type === '新增客户'){ }}
+        <span class="layui-badge layui-bg-green">创建</span>
+      {{# } else if(d.oper_type === '编辑客户'){ }}
+        <span class="layui-badge layui-bg-blue">更新</span>
+      {{# } else { }}
+        <span class="layui-badge">{{d.oper_type}}</span>
+      {{# } }}
+    </script>
+    </div>
+
+    {include file="common/foot"/}
+    <script>
+        layui.use(['table', 'form', 'layer', 'util'], function () {
+            var table = layui.table;
+            var form = layui.form;
+            var $ = layui.$;
+            var layer = layui.layer;
+            var util = layui.util;
+
+            // 获取URL参数中的客户ID
+            function getQueryParam(name) {
+                var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+                var r = window.location.search.substr(1).match(reg);
+                if (r != null) return decodeURIComponent(r[2]); return null;
+            }
+
+            var leadsId = getQueryParam('leads_id') || getQueryParam('id');
+
+            /* 表格渲染 */
+            var tableIns = table.render({
+                elem: '#table-list',
+                url: "{:url('admin/client/getEditRecords')}",
+                where: {
+                    leads_id: leadsId
+                },
+                page: true,
+                limit: 10,
+                limits: [10, 20, 50, 100],
+                loading: true,
+                skin: 'line',
+                even: true,
+                cols: [[
+                    { field: 'id', title: '记录ID', width: 80, fixed: 'left', sort: true },
+                    { field: 'leads_id', title: '客户ID', width: 80 },
+                    {
+                        field: 'oper_type',
+                        title: '操作类型',
+                        width: 120,
+                        templet: '#operTypeTpl'
+                    },
+                    {
+                        field: 'description',
+                        title: '操作描述',
+                        templet: '#descriptionTpl',
+                        minWidth: 300
+                    },
+                    // { field: 'user_id', title: '用户ID', width: 80 },
+                    { field: 'oper_user', title: '操作人员', width: 100 },
+                    {
+                        field: 'created_at',
+                        title: '操作时间',
+                        width: 180,
+                        sort: true,
+                        templet: function (d) {
+                            return util.toDateString(d.created_at * 1000);
+                        }
+                    },
+                    { width: 120, align: 'center', toolbar: '#action', fixed: 'right' }
+                ]],
+                response: {
+                    statusCode: 0 // 规定成功的状态码，默认：0
+                },
+                parseData: function (res) {
+                    return {
+                        "code": res.code,
+                        "msg": res.msg,
+                        "count": res.count,
+                        "data": res.data
+                    };
+                }
+            });
+
+            /* 表单提交：搜索功能 */
+            form.on('submit(search)', function (data) {
+                var keyword = data.field.keyword.trim();
+
+                tableIns.reload({
+                    where: {
+                        leads_id: leadsId,
+                        keyword: keyword
+                    },
+                    page: {
+                        curr: 1
+                    }
+                });
+
+                return false; // 禁止表单默认提交
+            });
+
+            /* 重置按钮 */
+            $('#reset').on('click', function () {
+                $('#keyword').val('');
+                tableIns.reload({
+                    where: {
+                        leads_id: leadsId,
+                        keyword: ''
+                    },
+                    page: {
+                        curr: 1
+                    }
+                });
+            });
+
+            // 递归处理对象，生成HTML
+            function renderObject(obj, indentLevel) {
+                var html = '';
+                indentLevel = indentLevel || 0;
+                var indent = '  '.repeat(indentLevel);
+
+                for (var key in obj) {
+                    if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        // 如果是对象，递归处理
+                        html += '<div class="detail-item" style="margin-left: ' + (indentLevel * 20) + 'px;">';
+                        html += '<span class="detail-label">' + key + '：</span>';
+
+                        if (key == 'phone' || key == 'email') {
+                            if (obj[key] !== null && obj[key] !== undefined) {
+                                if (typeof obj[key] === 'object') {
+                                    obj[key].forEach(function(item) {
+                                        html += '<span class="detail-value">' + item + '</span>';
+                                    });
+                                } else {
+                                    html += '<span>' + obj[key] + '</span>';
+
+                                }
+                            }
+                        } else {
+                            html += '<div class="nested-object">';
+                            html += renderObject(obj[key], indentLevel + 1);
+                            html += '</div>';
+                        }
+
+                        html += '</div>';
+                    } else {
+                        // 如果是基本类型，直接显示
+                        html += '<div class="detail-item" style="margin-left: ' + (indentLevel * 20) + 'px;">';
+                        html += '<span class="detail-label">' + key + '：</span>';
+                        html += '<span>' + (obj[key] !== null && obj[key] !== undefined ? obj[key] : '') + '</span>';
+                        html += '</div>';
+                    }
+                }
+
+                return html;
+            }
+            /* 监听工具条 */
+            table.on('tool(table-list)', function (obj) {
+                var data = obj.data;
+
+                if (obj.event === 'detail') {
+                    // 尝试解析描述内容中的JSON数据
+                    var detailContent = '';
+                    try {
+                        var descData = JSON.parse(data.description);
+                        if (typeof descData === 'object') {
+                            detailContent = '<div class="detail-content">';
+                            detailContent += renderObject(descData);
+                            detailContent += '</div>';
+                        } else {
+                            detailContent = '<div class="detail-content">' + (data.description || '无描述信息') + '</div>';
+                        }
+                    } catch (e) {
+                        // 如果不是JSON格式，直接显示原始描述
+                        detailContent = '<div class="detail-content">' + (data.description || '无描述信息') + '</div>';
+                    }
+
+                    // 显示详情弹窗
+                    layer.open({
+                        type: 1,
+                        title: '操作详情',
+                        area: ['700px', '500px'],
+                        content: '<div style="padding: 20px;">' +
+                            '<div class="detail-item">' +
+                            '<span class="detail-label">记录ID：</span>' +
+                            '<span>' + data.id + '</span>' +
+                            '</div>' +
+                            '<div class="detail-item">' +
+                            '<span class="detail-label">客户ID：</span>' +
+                            '<span>' + data.leads_id + '</span>' +
+                            '</div>' +
+                            '<div class="detail-item">' +
+                            '<span class="detail-label">操作类型：</span>' +
+                            '<span>' + data.oper_type + '</span>' +
+                            '</div>' +
+                            '<div class="detail-item">' +
+                            '<span class="detail-label">操作描述：</span>' +
+                            '</div>' +
+                            detailContent +
+                            '<div class="detail-item">' +
+                            '<span class="detail-label">用户ID：</span>' +
+                            '<span>' + data.user_id + '</span>' +
+                            '</div>' +
+                            '<div class="detail-item">' +
+                            '<span class="detail-label">操作人员：</span>' +
+                            '<span>' + data.oper_user + '</span>' +
+                            '</div>' +
+                            '<div class="detail-item">' +
+                            '<span class="detail-label">操作时间：</span>' +
+                            '<span>' + util.toDateString(data.created_at * 1000) + '</span>' +
+                            '</div>' +
+                            '</div>'
+                    });
+                }
+            });
+
+            // 页面加载时如果有keyword参数则自动搜索
+            setTimeout(function () {
+                var params = new URLSearchParams(window.location.search);
+                var keyword = params.get('keyword');
+                if (keyword) {
+                    $('input[name="keyword"]').val(keyword); // 自动填充
+                    $('button[lay-filter="search"]').trigger('click'); // 模拟点击触发搜索
+                }
+            }, 100);
+
+            // 回车键触发搜索
+            $('#keyword').on('keypress', function (e) {
+                if (e.keyCode === 13) { // 回车键的 keyCode 是 13
+                    $('button[lay-filter="search"]').trigger('click'); // 触发搜索按钮点击事件
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

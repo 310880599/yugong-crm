@@ -36,7 +36,7 @@ while (true) {
             ->alias('l')
             ->field([
                 'l.id', 'l.kh_name', 'l.xs_area', 'l.kh_rank', 'l.kh_status',
-                'l.at_user', 'l.at_time', 'l.pr_gh_type', 'l.pr_user',
+                'l.at_user', 'l.at_time', 'l.pr_gh_type', 'l.pr_user','l.oper_user','l.product_name',
                 \think\Db::raw('NULL AS contact_type'),
                 \think\Db::raw('NULL AS contact_value')
             ])
@@ -59,7 +59,7 @@ while (true) {
             })
             ->field([
                 'l.id', 'l.kh_name', 'l.xs_area', 'l.kh_rank', 'l.kh_status',
-                'l.at_user', 'l.at_time', 'l.pr_gh_type', 'l.pr_user',
+                'l.at_user', 'l.at_time', 'l.pr_gh_type', 'l.pr_user','l.oper_user','l.product_name',
                 'c.contact_type', 'c.contact_value'
             ]);
 
@@ -68,6 +68,7 @@ while (true) {
         $rawList  = \think\Db::query($sql);
 
     } catch (\Exception $e) {
+        // var_dump($e->getMessage());
         // 记录或忽略异常
         $rawList = [];
     }

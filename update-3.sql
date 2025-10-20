@@ -155,3 +155,5 @@ CREATE TABLE `crm_product_category` (
 -- 产品加分类id
 ALTER TABLE `crm_products`
 ADD COLUMN `category_id` int(11) DEFAULT 0 COMMENT '产品分类id';
+
+ALTER TABLE `admin` ADD COLUMN `extra_rules` TEXT COMMENT '额外权限规则ID，逗号分隔' AFTER `group_id`;

@@ -55,13 +55,10 @@ class Common extends Controller
         //当前操作权限ID
         if (session('aid') != 1) {
             $this->HrefId = db('auth_rule')->where('href', MODULE_NAME . '/' . ACTION_NAME)->value('id');
-            //当前管理员权限
-            $map['a.admin_id'] = session('aid');
-            $rules = Db::table(config('database.prefix') . 'admin')->alias('a')
-                ->join(config('database.prefix') . 'auth_group ag', 'a.group_id = ag.group_id', 'left')
-                ->where($map)
-                ->value('ag.rules');
-            $this->adminRules = explode(',', $rules);
+             //当前管理员权限（用户组权限+额外权限）
+            $admin_id = session('aid');
+            $all_rules = \app\admin\model\Admin::getAdminRules($admin_id);
+            $this->adminRules = $all_rules ? explode(',', $all_rules) : [];
             if ($this->HrefId) {
                 if (!in_array($this->HrefId, $this->adminRules)) {
                     $this->error('您无此操作权限');
@@ -220,7 +217,7 @@ class Common extends Controller
     public function buildTimeWhere($timebucket, $field = 'create_time')
     {
         if (!$timebucket) {
-            return ['1','=','1'];
+            return ['1', '=', '1'];
         }
         $timeRanges = [
             'today' => ['today', 'today'],
@@ -287,5 +284,35 @@ class Common extends Controller
         if ($current_admin['org'] && strpos($current_admin['org'], 'admin') === false) $where[] = $this->getOrgWhere($current_admin['org']);
         $list = Db::name('crm_product_category')->where($where)->select();
         return $list;
+    }
+
+    protected function checkAdminAuth($rule = '')
+    {
+        $admin_id = session('aid');
+        if (!$admin_id) {
+            return false;
+        }
+
+        // 超级管理员拥有所有权限
+        $admin_info = db('admin')->where('admin_id', $admin_id)->find();
+        if ($admin_info['group_id'] == 1) {
+            return true;
+        }
+
+        // 获取管理员的所有权限（用户组权限+额外权限）
+        $all_rules = \app\admin\model\Admin::getAdminRules($admin_id);
+        if (empty($all_rules)) {
+            return false;
+        }
+
+        // 获取当前请求的规则ID
+        $auth_rule = db('auth_rule')->where('href', $rule)->value('id');
+        if (!$auth_rule) {
+            return false;
+        }
+
+        // 检查是否有权限
+        $rules = explode(',', $all_rules);
+        return in_array($auth_rule, $rules);
     }
 }
