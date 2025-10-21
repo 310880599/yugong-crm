@@ -1980,4 +1980,184 @@ class Client extends Common
             'count' => $count
         ]);
     }
+    public function extract()
+    {
+        // 1. 验证请求方法
+        if (!$this->request->isPost()) {
+            return json(['code' => 1, 'msg' => '请求方法错误']);
+        }
+
+        // 2. 获取并验证参数
+        $id = $this->request->post('id/d');
+        $username = $this->request->post('username');
+        
+        if (!$id) {
+            return json(['code' => 1, 'msg' => '客户ID不能为空']);
+        }
+        
+        if (empty($username)) {
+            // 尝试从会话中获取
+            $username = Session::get('username');
+            if (empty($username)) {
+                return json(['code' => 1, 'msg' => '用户未登录']);
+            }
+        }
+
+        // 3. 检查客户是否存在
+        $client = Db::name('crm_leads')
+            ->where('id', $id)
+            ->where('status', 2)  // 确保客户状态为2
+            ->find();
+        
+        if (!$client) {
+            return json(['code' => 1, 'msg' => '客户不存在或状态不符合提取条件']);
+        }
+
+        // 4. 检查客户是否属于公海
+        $publicSeas = ['S1客户公海', 'S2客户公海', 'S3客户公海'];
+        $isPublicSea = in_array($client['pr_gh_type'], $publicSeas);
+        
+        if (!$isPublicSea) {
+            return json(['code' => 1, 'msg' => '该客户不属于公海，无法提取']);
+        }
+
+        // 5. 检查客户是否已被他人提取（防止并发问题）
+        $currentClient = Db::name('crm_leads')
+            ->where('id', $id)
+            ->where('status', 2)  // 再次确认状态
+            ->where('pr_gh_type', 'in', $publicSeas)
+            ->find();
+        
+        if (!$currentClient) {
+            return json(['code' => 1, 'msg' => '该客户已被其他同事提取，请刷新页面']);
+        }
+
+        // 6. 更新客户归属
+        $updateData = [
+            'status'      => 1,          // 修改状态为1
+            'pr_user'     => $username,  // 设置为当前用户名
+            'pr_gh_type'  => '',         // 清空公海类型
+            'ut_time' => date("Y-m-d H:i:s")      // 更新时间戳
+        ];
+
+        // 添加乐观锁，防止并发更新问题
+        $result = Db::name('crm_leads')
+            ->where('id', $id)
+            ->where('status', 2)           // 确保只更新状态为2的记录
+            ->where('pr_gh_type', 'in', $publicSeas)
+            ->update($updateData);
+
+        // 7. 处理更新结果
+        if ($result === false) {
+            return json(['code' => 1, 'msg' => '系统错误，请重试']);
+        } elseif ($result === 0) {
+            // 可能是并发操作导致更新失败
+            return json(['code' => 1, 'msg' => '该客户已被其他同事提取，请刷新页面']);
+        }
+
+       
+
+        // 9. 返回响应（根据请求类型）
+        if ($this->request->isAjax()) {
+            return json(['code' => 0, 'msg' => '客户提取成功']);
+        } else {
+            $this->success('客户提取成功', url('client/index'));
+        }
+    }
+
+    /**
+     * 批量提取公海客户
+     * 
+     * @return \think\response\Json
+     */
+    public function batchExtract()
+    {
+        // 1. 验证请求方法
+        if (!$this->request->isPost()) {
+            return json(['code' => 1, 'msg' => '请求方法错误']);
+        }
+
+        // 2. 获取并验证参数
+        $ids = $this->request->post('ids/a');
+        $username = $this->request->post('username');
+        
+        if (empty($ids) || !is_array($ids)) {
+            return json(['code' => 1, 'msg' => '请选择要提取的客户']);
+        }
+        
+        if (empty($username)) {
+            // 尝试从会话中获取
+            $username = Session::get('username');
+            if (empty($username)) {
+                return json(['code' => 1, 'msg' => '用户未登录']);
+            }
+        }
+
+        // 3. 获取所有客户信息
+        $clients = Db::name('crm_leads')
+            ->where('id', 'in', $ids)
+            ->where('status', 2)  // 确保只提取状态为2的客户
+            ->select();
+        
+        if (empty($clients)) {
+            return json(['code' => 1, 'msg' => '没有找到符合提取条件的客户']);
+        }
+
+        // 4. 筛选出有效的公海客户
+        $publicSeas = ['S1客户公海', 'S2客户公海', 'S3客户公海'];
+        $validIds = [];
+        
+        foreach ($clients as $client) {
+            if (in_array($client['pr_gh_type'], $publicSeas)) {
+                $validIds[] = $client['id'];
+            }
+        }
+        
+        if (empty($validIds)) {
+            return json(['code' => 1, 'msg' => '没有有效的公海客户可提取']);
+        }
+
+        // 5. 更新客户归属
+        $updateData = [
+            'status'      => 1,          // 修改状态为1
+            'pr_user'     => $username,  // 设置为当前用户名
+            'pr_gh_type'  => '',         // 清空公海类型
+            'ut_time' => date("Y-m-d H:i:s")      // 更新时间戳
+        ];
+
+        $result = Db::name('crm_leads')
+            ->where('id', 'in', $validIds)
+            ->where('status', 2)           // 确保只更新状态为2的记录
+            ->where('pr_gh_type', 'in', $publicSeas)
+            ->update($updateData);
+
+        // 6. 处理更新结果
+        $successCount = $result ?: 0;
+        $failCount = count($validIds) - $successCount;
+
+        // 7. 记录操作日志
+        $this->addLog(
+            'batch_extract_client', 
+            '批量提取客户', 
+            "成功提取 {$successCount} 个客户，失败 {$failCount} 个，客户ID: " . implode(',', $validIds)
+        );
+
+        // 8. 返回响应
+        if ($this->request->isAjax()) {
+            return json([
+                'code' => 0,
+                'msg' => $failCount > 0 
+                    ? "成功提取 {$successCount} 个客户，{$failCount} 个客户已被他人提取" 
+                    : "成功提取 {$successCount} 个客户",
+                'data' => [
+                    'successCount' => $successCount,
+                    'failCount' => $failCount
+                ]
+            ]);
+        } else {
+            $this->success("成功提取 {$successCount} 个客户", url('client/index'));
+        }
+    }
+
+   
 }

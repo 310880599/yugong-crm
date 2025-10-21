@@ -71,157 +71,195 @@
     </fieldset>
     <table class="layui-table" id="table-list" lay-filter="table-list"></table>
     <script type="text/html" id="action">
+ {{# if(d.pr_user == '{:session("username")}' || d.pr_gh_type == 'S1客户公海' || d.pr_gh_type == 'S2客户公海' || d.pr_gh_type == 'S3客户公海'){ }}
       <a class="layui-btn  layui-btn-xs" href="{:url('editRecord')}?id={{d.id}}"><i class="layui-icon">&#xe63c;</i>修改记录</a>
-       {{# if(d.pr_user == '{:session("username")}'){ }}
-    <a class="layui-btn  layui-btn-xs" href="{:url('edit')}?id={{d.id}}"><i class="layui-icon">&#xe642;</i>编辑</a>
-       {{# } }}
+      <a class="layui-btn  layui-btn-xs" href="{:url('edit')}?id={{d.id}}"><i class="layui-icon">&#xe642;</i>编辑</a>
+    {{# } }}
+     {{# if(d.pr_gh_type == 'S1客户公海' || d.pr_gh_type == 'S2客户公海' || d.pr_gh_type == 'S3客户公海'){ }}
+    <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="robClient" style="font-size: 14px"><i class="fa fa-user-o"></i> 提取客户</a>
+    {{# } }}
 </script>
   </div>
 
   {include file="common/foot"/}
   <script>
-    layui.use(['table', 'form', 'layer'], function () {
-      var table = layui.table;
-      var form = layui.form;
-      var $ = layui.$;
-      var layer = layui.layer;
+  layui.use(['table', 'form', 'layer'], function () {
+    var table = layui.table;
+    var form = layui.form;
+    var $ = layui.$;
+    var layer = layui.layer;
+    
+    /* ===== ① 首次渲染：本地数据模式，data 为空数组 ===== */
+    var tableIns = table.render({
+      elem: '#table-list',
+      data: [],
+      page: true,
+      limit: 10,
+      limits: [10, 20, 50],
+      cols: [[
+        { checkbox: true, fixed: true },
+        { field: 'id', title: '客户id' },
+        { field: 'kh_name', title: '客户名称' },
+        { field: 'xs_area', title: '国家' },
+        { field: 'kh_rank', title: '客户等级' },
+        { field: 'kh_status', title: '客户来源' },
+        { field: 'product_name', title: '产品名称' },
+        { field: 'oper_user', title: '所属运营' },
+        {
+          field: 'pr_user', title: '客户归属人',
+          templet: function (res) {
+            return res.pr_gh_type && res.pr_gh_type.trim() !== ''
+              ? res.pr_gh_type
+              : res.pr_user;
+          }
+        },
+        { field: 'at_time', title: '添加时间' },
+        {
+          field: 'repeat_info', title: '重复类型',
+          templet: function (res) { return res.repeat_info || '' }
+        },
+        { width: 320, align: 'center', toolbar: '#action' }
+      ]]
+    });
 
-      /* ===== ① 首次渲染：本地数据模式，data 为空数组 ===== */
-      var tableIns = table.render({
-        elem: '#table-list',
-        data: [],          // 先不给 url，保持本地模式
-        page: true,
-        limit: 10,
-        limits: [10, 20, 50],
-        cols: [[
-          { checkbox: true, fixed: true },
-          { field: 'id', title: '客户id' },
-          { field: 'kh_name', title: '客户名称' },
-          { field: 'xs_area', title: '国家' },
-          { field: 'kh_rank', title: '客户等级' },
-          { field: 'kh_status', title: '客户来源' },
-          { field: 'product_name', title: '产品名称' },
-          { field: 'oper_user', title: '所属运营' },
-          {
-            field: 'pr_user', title: '客户归属人',
-            templet: function (res) {
-              return res.pr_gh_type && res.pr_gh_type.trim() !== ''
-                ? res.pr_gh_type
-                : res.pr_user;
+    /* ===== 修复1：提取客户功能（使用正确的事件名称） ===== */
+    table.on('tool(table-list)', function(obj) {
+      var data = obj.data;
+      
+      // 修复：事件名称必须与HTML中lay-event保持一致
+      if (obj.event === 'robClient') {
+        layer.confirm('确定要将该客户提取到您的名下吗？', {
+          icon: 3,
+          title: '提取客户',
+          btn: ['确认提取', '取消']
+        }, function(index) {
+          var username = '{:session("username")}';
+          
+          // 添加X-Requested-With头，确保后端识别为AJAX请求
+          $.ajax({
+            url: "{:url('admin/client/extract')}",
+            type: 'POST',
+            data: { 
+              id: data.id,
+              username: username
+            },
+            dataType: 'json',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(res) {
+              // 处理跳转响应
+              if (res.url && typeof res.wait !== 'undefined') {
+                layer.msg(res.msg || '操作成功，正在跳转...', { icon: 1 });
+                setTimeout(function() {
+                  window.location.href = res.url;
+                }, res.wait * 1000);
+                return;
+              }
+              
+              // 处理"空操作"响应
+              if (res.code === 0 && res.msg && res.msg.includes('空操作')) {
+                layer.msg('客户状态已更新，请查看最新数据', { icon: 7 });
+                tableIns.reload();
+                return;
+              }
+              
+              if (res.code === 0) {
+                layer.msg('客户提取成功！', { icon: 1, time: 1500 }, function() {
+                  tableIns.reload();
+                });
+              } else {
+                layer.msg(res.msg || '提取失败，请重试', { icon: 5 });
+              }
+            },
+            error: function(xhr) {
+              var errorMsg = '请求失败';
+              try {
+                var res = JSON.parse(xhr.responseText);
+                errorMsg = res.msg || errorMsg;
+              } catch (e) {
+                errorMsg = xhr.statusText || errorMsg;
+              }
+              layer.msg(`提取失败: ${errorMsg}`, { icon: 5 });
             }
-          },
-          { field: 'at_time', title: '添加时间' },
-          {
-            field: 'repeat_info', title: '重复类型',
-            templet: function (res) { return res.repeat_info || '' }
-          },
-          { width: 320, align: 'center', toolbar: '#action' }
-        ]]
-      });
+          });
+          layer.close(index);
+        });
+      }
+    });
 
+    /* ===== 修复2：查重功能（确保独立于提取功能） ===== */
+    form.on('submit(search)', function(data) {
+      var keyword = data.field.keyword.trim();
+      if (!keyword) {
+        layer.msg('请输入搜索关键词', { icon: 5 });
+        return false;
+      }
 
-
-
-      /* ===== ② 表单提交：发起查重任务 ===== */
-      form.on('submit(search)', function (data) {
-        var keyword = data.field.keyword.trim();
-        if (!keyword) {
-          layer.msg('请输入搜索关键词', { icon: 5 });
-          return false;
+      // 创建查重任务
+      $.post("{:url('admin/client/conflict')}", { keyword: keyword }, function(res) {
+        if (res.code !== 0) {
+          layer.msg(res.msg || '提交查重任务失败', { icon: 5 });
+          return;
         }
 
-        // 创建查重任务
-        $.post("{:url('admin/client/conflict')}", { keyword: keyword }, function (res) {
-          if (res.code !== 0) {
-            layer.msg(res.msg || '提交查重任务失败', { icon: 5 });
-            return;
-          }
-
-          var taskId = res.task_id;
-          var loadingIdx = layer.msg('正在查重，请稍候…', {
-            icon: 16, shade: 0.3, time: false
-          });
-
-          //   var timer = setInterval(function () {
-          //     $.post("{:url('admin/client/getConflictResult')}", { task_id: taskId }, function (res2) {
-
-          //       if (res2.code === 202) return;               // 仍在处理 → 继续轮询
-
-          //       clearInterval(timer);                        // 不管成功失败都停轮询
-          //       layer.close(loadingIdx);
-
-          //       if (res2.code !== 0) {                       // 失败
-          //         layer.msg(res2.msg || '查重失败', { icon: 5 });
-          //         return;
-          //       }
-
-          //       /* ===== ③ 结果到手：切换到本地数据模式并刷新 ===== */
-          //       tableIns.reload({
-          //         url  : '',           // ***关键：清空 url，保持本地模式***
-          //         data : res2.data,    // 直接塞入返回数组
-          //         page : { curr: 1 }   // 回第一页
-          //       });
-          //     });
-          //   }, 1000);
-
-          var timer = setInterval(function () {
-            $.post("{:url('admin/client/getConflictResult')}", { task_id: taskId }, function (res2) {
-
-              if (res2.code === 202) return; // 正在处理 → 继续轮询
-
-              clearInterval(timer);          // 停止轮询
-              layer.close(loadingIdx);       // 关闭加载提示
-
-              if (res2.code === 404) {
-                layer.msg(res2.msg || '查重失败，请再次尝试搜索', { icon: 5 });
-                tableIns.reload({
-                  url: '',
-                  data: [],
-                  page: { curr: 1 }
-                });
-                return;
-              }
-
-              if (res2.code !== 0) {
-                layer.msg(res2.msg || '查重失败', { icon: 5 });
-                return;
-              }
-
-              // 查重成功，加载结果数据
-              tableIns.reload({
-                url: '',
-                data: res2.data || [],
-                page: { curr: 1 }
-              });
-            });
-          }, 1000);
-
-
-
-
+        var taskId = res.task_id;
+        var loadingIdx = layer.msg('正在查重，请稍候…', {
+          icon: 16, shade: 0.3, time: false
         });
 
-        return false; // 禁止表单默认提交
+        var timer = setInterval(function() {
+          $.post("{:url('admin/client/getConflictResult')}", { task_id: taskId }, function(res2) {
+            if (res2.code === 202) return; // 正在处理 → 继续轮询
+
+            clearInterval(timer);          // 停止轮询
+            layer.close(loadingIdx);       // 关闭加载提示
+
+            if (res2.code === 404) {
+              layer.msg(res2.msg || '查重失败，请再次尝试搜索', { icon: 5 });
+              tableIns.reload({
+                url: '',
+                data: [],
+                page: { curr: 1 }
+              });
+              return;
+            }
+
+            if (res2.code !== 0) {
+              layer.msg(res2.msg || '查重失败', { icon: 5 });
+              return;
+            }
+
+            // 查重成功，加载结果数据
+            tableIns.reload({
+              url: '',
+              data: res2.data || [],
+              page: { curr: 1 }
+            });
+          });
+        }, 1000);
       });
 
-
-      setTimeout(function () {
-        var params = new URLSearchParams(window.location.search);
-        var keyword = params.get('keyword');
-        if (keyword) {
-          $('input[name="keyword"]').val(keyword); // 自动填充
-          $('button[lay-filter="search"]').trigger('click'); // 模拟点击触发查重
-        }
-      }, 100);
-
-
-      $('#keyword').on('keypress', function (e) {
-        if (e.keyCode === 13) { // 回车键的 keyCode 是 13
-          $('button[lay-filter="search"]').trigger('click'); // 触发搜索按钮点击事件
-        }
-      });
+      return false; // 禁止表单默认提交
     });
-  </script>
+
+    /* ===== 修复3：自动填充和回车搜索 ===== */
+    setTimeout(function() {
+      var params = new URLSearchParams(window.location.search);
+      var keyword = params.get('keyword');
+      if (keyword) {
+        $('input[name="keyword"]').val(keyword);
+        $('button[lay-filter="search"]').trigger('click');
+      }
+    }, 100);
+
+    $('#keyword').on('keypress', function(e) {
+      if (e.keyCode === 13) {
+        $('button[lay-filter="search"]').trigger('click');
+      }
+    });
+  });
+</script>
 </body>
 
 </html>
