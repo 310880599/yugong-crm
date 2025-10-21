@@ -139,13 +139,6 @@
                         + '<select name="channel" lay-verify="required">'
                         + '<option value="">请选择渠道</option>';
 
-                    // 动态添加渠道选项
-                    var channelMatch = false;
-                    if (Array.isArray(channel)) {
-                        channelMatch = channel.includes(item.name);
-                    } else {
-                        channelMatch = (channel && item.name == channel);
-                    }
                     $.each(res.data, function (index, item) {
                         sel = '';
 
