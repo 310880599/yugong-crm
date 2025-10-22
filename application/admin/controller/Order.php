@@ -45,11 +45,6 @@ class Order extends Common
         // $this->assign('total_money', number_format($total_money, 2));
         // $this->assign('total_profit', number_format($total_profit, 2));
 
-
-        //查询所有管理员（去除admin）
-        $adminResult = Db::name('admin')->where('group_id', '<>', 1)->field('admin_id,username')->select();
-        $this->assign('adminResult', $adminResult);
-
         //查询所有团队
         $teamList = $this->getTeamList();
         $this->assign('teamList', $teamList);
@@ -62,6 +57,12 @@ class Order extends Common
         }
         $this->assign('orgList', $orgList);
         
+        //查询所有管理员（去除admin）
+        $ywList = Db::name('admin')->where('group_id', 'in', [$this->ywzgid, $this->ywgid])->where([$this->getOrgWhere($user['org'])])->field('admin_id,username')->select();
+        $opList = Db::name('admin')->where('group_id', '=', $this->yygid)->where([$this->getOrgWhere($user['org'])])->field('admin_id,username')->select();
+        $this->assign('ywList', $ywList);
+        $this->assign('opList', $opList);
+
         //查询所有客户来源
         $sourceList = Db::name('crm_client_status')->distinct(true)->column('status_name');
         $this->assign('sourceList', $sourceList);

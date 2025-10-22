@@ -213,7 +213,7 @@
                                             <div class="layui-input-inline">
                                                 <select name="pr_user" id="pr_user" lay-search="">
                                                     <option value="">请选择业务员</option>
-                                                    {volist name='adminResult' id='vo'}
+                                                    {volist name='ywList' id='vo'}
                                                     <option value="{$vo.username}">{$vo.username}</option>
                                                     {/volist}
                                                 </select>
@@ -225,7 +225,7 @@
                                             <div class="layui-input-inline">
                                                 <select name="oper_user" id="oper_user" lay-search="">
                                                     <option value="">请选择运营</option>
-                                                    {volist name='adminResult' id='vo'}
+                                                    {volist name='opList' id='vo'}
                                                     <option value="{$vo.username}">{$vo.username}</option>
                                                     {/volist}
                                                 </select>
