@@ -219,6 +219,18 @@
                                                 </select>
                                             </div>
                                         </div>
+
+                                        <div class="layui-inline">
+                                            <label class="layui-form-label">运营：</label>
+                                            <div class="layui-input-inline">
+                                                <select name="oper_user" id="oper_user" lay-search="">
+                                                    <option value="">请选择运营</option>
+                                                    {volist name='adminResult' id='vo'}
+                                                    <option value="{$vo.username}">{$vo.username}</option>
+                                                    {/volist}
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -292,6 +304,7 @@
                     { field: 'order_time', title: '成交时间' },
                     { field: 'source', title: '询盘来源' },
                     { field: 'pr_user', title: '负责人', hide: false },
+                    { field: 'oper_user', title: '运营', hide: false },
                     { field: 'team_name', title: '团队', hide: false },
                     { width: 200, title: '操作', toolbar: '#action' }
                 ]],

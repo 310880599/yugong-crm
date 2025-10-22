@@ -415,6 +415,11 @@ class Order extends Common
             $client_where[] = ['pr_user', '=', $keyword['pr_user']];
         }
 
+        if (isset($keyword['oper_user'])) {
+            $where[] = ['oper_user', '=', $keyword['oper_user']];
+            $client_where[] = ['oper_user', '=', $keyword['oper_user']];
+        }
+
         $list = Db::table('crm_client_order')
             ->where($where)
             ->order('order_time desc')
