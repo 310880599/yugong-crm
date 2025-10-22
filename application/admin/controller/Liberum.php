@@ -156,6 +156,15 @@ class Liberum extends Common{
             $data['ispublic'] = 2;
 
             $result = Db::table('crm_leads')->where(['id' => $data['id']])->update($data);
+            if($result){
+                // 添加日志记录
+                Client::addOperLog(
+                    $data['id'],
+                    '提取客户',
+                    "{$data['pr_user']} 从{$gh_client['pr_gh_type']} 提取{$gh_client['pr_user']} 的客户 : {$gh_client['kh_name']}"
+                );
+                    
+            }
             return $result 
                 ? ['code' => 0, 'msg' => '抢客户成功！', 'data' => []]
                 : ['code' => -200, 'msg' => '抢客户失败！', 'data' => []];
