@@ -71,8 +71,9 @@
     </fieldset>
     <table class="layui-table" id="table-list" lay-filter="table-list"></table>
     <script type="text/html" id="action">
- {{# if(d.pr_user == '{:session("username")}' || d.pr_gh_type == 'S1客户公海' || d.pr_gh_type == 'S2客户公海' || d.pr_gh_type == 'S3客户公海'){ }}
+ 
       <a class="layui-btn  layui-btn-xs" href="{:url('editRecord')}?id={{d.id}}"><i class="layui-icon">&#xe63c;</i>修改记录</a>
+      {{# if(d.pr_user == '{:session("username")}' || d.pr_gh_type == 'S1客户公海' || d.pr_gh_type == 'S2客户公海' || d.pr_gh_type == 'S3客户公海'){ }}
       <a class="layui-btn  layui-btn-xs" href="{:url('edit')}?id={{d.id}}"><i class="layui-icon">&#xe642;</i>编辑</a>
     {{# } }}
      {{# if(d.pr_gh_type == 'S1客户公海' || d.pr_gh_type == 'S2客户公海' || d.pr_gh_type == 'S3客户公海'){ }}
@@ -188,7 +189,6 @@
       }
     });
 
-    /* ===== 修复2：查重功能（确保独立于提取功能） ===== */
     form.on('submit(search)', function(data) {
       var keyword = data.field.keyword.trim();
       if (!keyword) {

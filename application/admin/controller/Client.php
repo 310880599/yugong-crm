@@ -1947,6 +1947,24 @@ class Client extends Common
             return json(['code' => 500, 'msg' => '缺少客户ID', 'data' => [], 'count' => 0]);
         }
         
+        // 获取当前用户ID
+        $currentUserId = Session::get('aid');
+        
+        // 获取客户信息，包括负责人ID和客户状态
+        $clientInfo = Db::name('crm_leads')->where('id', $leadsId)->find();
+        $clientOwnerId = 0;
+        $isPublicSea = false;
+        
+        if ($clientInfo) {
+            $ownerInfo = Db::name('admin')->where('username', $clientInfo['pr_user'])->field('admin_id')->find();
+            $clientOwnerId = $ownerInfo ? $ownerInfo['admin_id'] : 0;
+            // 判断是否为公海客户（status=2表示公海客户）
+            $isPublicSea = ($clientInfo['status'] == 2);
+        }
+        
+        // 判断当前用户是否为客户负责人或者是否为公海客户
+        $showFullData = ($isPublicSea || ($currentUserId && $clientOwnerId && $currentUserId == $clientOwnerId));
+        
         // 构建查询
         $query = Db::table('crm_operation_log')
             ->where('leads_id', $leadsId);
@@ -1968,9 +1986,14 @@ class Client extends Common
             ->page($page, $limit)
             ->select();
             
-        // 处理时间格式
+        // 处理时间格式和数据脱敏
         foreach ($list as &$item) {
             $item['created_at'] = strtotime($item['created_at']);
+            
+            // 如果不是公海客户且用户不是客户负责人，需要对description进行脱敏处理
+            if (!$showFullData) {
+                $item['description'] = $this->maskDescriptionData($item['description']);
+            }
         }
         
         return json([
@@ -1979,6 +2002,153 @@ class Client extends Common
             'data' => $list,
             'count' => $count
         ]);
+    }
+    
+    /**
+     * 对description数据进行脱敏处理
+     * @param string $data 需要处理的数据
+     * @return string 处理后的数据
+     */
+    private function maskDescriptionData($data) {
+        if (empty($data)) {
+            return $data;
+        }
+        
+        // 尝试解析JSON数据
+        $decodedData = json_decode($data, true);
+        if (is_array($decodedData)) {
+            // 递归处理数组中的敏感字段
+            $processedData = $this->processSensitiveData($decodedData);
+            return json_encode($processedData, JSON_UNESCAPED_UNICODE);
+        }
+        
+        // 如果是纯数字字符串
+        if (is_string($data) && ctype_digit($data)) {
+            if (strlen($data) > 2) {
+                // 保留一半字符，其余用*替换
+                $halfLength = ceil(strlen($data) / 2);
+                return substr($data, 0, $halfLength) . str_repeat('*', strlen($data) - $halfLength);
+            }
+        } 
+        // 如果包含@符号（邮箱）
+        else if (is_string($data) && strpos($data, '@') !== false) {
+            $parts = explode('@', $data);
+            if (count($parts) === 2 && strlen($parts[0]) > 1) {
+                // 保留一半字符，其余用*替换
+                $halfLength = ceil(strlen($parts[0]) / 2);
+                $parts[0] = substr($parts[0], 0, $halfLength) . str_repeat('*', strlen($parts[0]) - $halfLength);
+                return implode('@', $parts);
+            }
+        }
+        // 其他字符串类型
+        else if (is_string($data) && strlen($data) > 2) {
+            // 保留一半字符，其余用*替换
+            $halfLength = ceil(strlen($data) / 2);
+            return substr($data, 0, $halfLength) . str_repeat('*', strlen($data) - $halfLength);
+        }
+        
+        return $data;
+    }
+    
+    /**
+     * 递归处理数组中的敏感数据
+     * @param array $data 需要处理的数据数组
+     * @return array 处理后的数据数组
+     */
+    private function processSensitiveData($data) {
+        if (!is_array($data)) {
+            // 如果不是数组，确保是有效的UTF-8编码
+            if (is_string($data) && !mb_check_encoding($data, 'UTF-8')) {
+                $data = mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+            }
+            return $data;
+        }
+        
+        foreach ($data as $key => $value) {
+            // 处理联系方式相关字段
+            if ($key === 'contact_value' || $key === 'phone' || $key === 'email' || $key === 'whatsapp' || 
+                $key === 'ali_id' || $key === 'wechat' || $key === 'facebook' || $key === 'twitter' || 
+                $key === 'linkedin' || $key === 'youtube' || $key === 'instagram' || $key === 'weibo' || 
+                $key === 'qq' || $key === 'trademanager' || $key === 'skype' || $key === '传真' || 
+                $key === 'msn' || $key === 'viber' || $key === 'pinterest' || $key === 'vk' || 
+                $key === 'line' || $key === 'zalo' || $key === 'telegram') {
+                
+                if (is_string($value)) {
+                    // 确保是有效的UTF-8编码
+                    if (!mb_check_encoding($value, 'UTF-8')) {
+                        $value = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+                        $data[$key] = $value;
+                    }
+                    
+                    // 如果是纯数字
+                    if (ctype_digit($value)) {
+                        if (strlen($value) > 2) {
+                            // 保留一半字符，其余用*替换
+                            $halfLength = ceil(strlen($value) / 2);
+                            $data[$key] = substr($value, 0, $halfLength) . str_repeat('*', strlen($value) - $halfLength);
+                        }
+                    } 
+                    // 如果包含@符号（邮箱）
+                    else if (strpos($value, '@') !== false) {
+                        $parts = explode('@', $value);
+                        if (count($parts) === 2 && strlen($parts[0]) > 1) {
+                            // 保留一半字符，其余用*替换
+                            $halfLength = ceil(strlen($parts[0]) / 2);
+                            $parts[0] = substr($parts[0], 0, $halfLength) . str_repeat('*', strlen($parts[0]) - $halfLength);
+                            $data[$key] = implode('@', $parts);
+                        }
+                    }
+                    // 其他字符串类型
+                    else if (strlen($value) > 2) {
+                        // 保留一半字符，其余用*替换
+                        $halfLength = ceil(strlen($value) / 2);
+                        $data[$key] = substr($value, 0, $halfLength) . str_repeat('*', strlen($value) - $halfLength);
+                    }
+                } 
+                // 特别处理电话号码数组格式 [["222","1213211111"]]
+                else if (is_array($value) && $key === 'phone') {
+                    foreach ($value as $index => $phoneItem) {
+                        if (is_array($phoneItem) && count($phoneItem) >= 2) {
+                            // phoneItem[0] 是区号，phoneItem[1] 是电话号码
+                            $phoneNumber = $phoneItem[1];
+                            if (is_string($phoneNumber) && ctype_digit($phoneNumber) && strlen($phoneNumber) > 2) {
+                                // 对电话号码进行脱敏处理，保留一半字符
+                                $halfLength = ceil(strlen($phoneNumber) / 2);
+                                $maskedNumber = substr($phoneNumber, 0, $halfLength) . str_repeat('*', strlen($phoneNumber) - $halfLength);
+                                $data[$key][$index][1] = $maskedNumber;
+                            }
+                        }
+                    }
+                }
+                // 处理邮箱数组格式 ["moelsulim@gmail.com"]
+                else if (is_array($value) && $key === 'email') {
+                    foreach ($value as $index => $email) {
+                        if (is_string($email) && strpos($email, '@') !== false) {
+                            $parts = explode('@', $email);
+                            if (count($parts) === 2 && strlen($parts[0]) > 1) {
+                                // 保留一半字符，其余用*替换
+                                $halfLength = ceil(strlen($parts[0]) / 2);
+                                $parts[0] = substr($parts[0], 0, $halfLength) . str_repeat('*', strlen($parts[0]) - $halfLength);
+                                $data[$key][$index] = implode('@', $parts);
+                            }
+                        }
+                    }
+                }
+                // 处理其他嵌套数组
+                else if (is_array($value)) {
+                    $data[$key] = $this->processSensitiveData($value);
+                }
+            } 
+            else if (is_array($value)) {
+                // 递归处理子数组
+                $data[$key] = $this->processSensitiveData($value);
+            } else if (is_string($value) && !mb_check_encoding($value, 'UTF-8')) {
+                // 确保所有字符串值都是有效的UTF-8编码
+                $data[$key] = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+            }
+        }
+        
+        return $data;
     }
     public function extract()
     {
