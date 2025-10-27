@@ -201,10 +201,13 @@ class Order extends Common
                 //     $res['msg'] = "该客户在" . $custinfo['pr_user'] . "业务员下";
                 //     return $this->success($res);
                 // }
-                if ($custinfo['issuccess'] == 1) {
-                    $res['code'] = 0;
-                    $res['msg'] = "该客户已经成交了，请检查客户手机信息";
-                } else {
+                // if ($custinfo['issuccess'] == 1) {
+                //     $res['code'] = 0;
+                //     $res['msg'] = "该客户已经成交了，请检查客户手机信息";
+                // } else {
+                   if ($custinfo['issuccess'] == 1){
+                        $custinfo['kh_status']='返单';
+                    }
                     $res['code'] = 1;
                     $res['custname'] = $custinfo['kh_name'];
                     $res['kh_username'] = $custinfo['kh_username'];
@@ -213,7 +216,7 @@ class Order extends Common
                     $res['country'] = $custinfo['xs_area'];
                     $res['oper_user'] = $custinfo['oper_user'];
                     $res['msg'] = "客户名称:" . $custinfo['kh_name'] . "询盘来源：" . $custinfo['kh_status'] . ",所属业务员:" . $custinfo['pr_user']. ",所属运营:" . $custinfo['oper_user'];
-                }
+                // }
             } else {
                 $res['code'] = 0;
                 $res['msg'] = "该客户信息没用找到";

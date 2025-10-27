@@ -66,23 +66,27 @@
                         var lowerSourceValue = sourceValue.toLowerCase();
                         var $sourceSelect = $('#source');
                         var matched = false;
-
-                        $sourceSelect.find('option').each(function () {
-                            var optionValue = $(this).val();
-                            if (optionValue != '') {
-                                var lowerOptionValue = optionValue.toLowerCase();
-                                if (lowerSourceValue.includes(lowerOptionValue)) {
-                                    $sourceSelect.val(optionValue);
-                                    matched = true;
-                                    return false; // 终止循环
+                        if(sourceValue == '返单'){
+                            $sourceSelect.val('返单');
+                        }else{
+                                $sourceSelect.find('option').each(function () {
+                                var optionValue = $(this).val();
+                                if (optionValue != '') {
+                                    var lowerOptionValue = optionValue.toLowerCase();
+                                    if (lowerSourceValue.includes(lowerOptionValue)) {
+                                        $sourceSelect.val(optionValue);
+                                        matched = true;
+                                        return false; // 终止循环
+                                    }
                                 }
+
+                            });
+
+                            if (!matched) {
+                                $sourceSelect.val(''); // 未匹配到则清空选择
                             }
-
-                        });
-
-                        if (!matched) {
-                            $sourceSelect.val(''); // 未匹配到则清空选择
                         }
+        
 
                         // 重新渲染 layui 的 select 组件
                         layui.form.render('select');
@@ -273,10 +277,14 @@
 
             var yyList = {$yyList|raw};
             form.on('select(kh_status)', function(data) {
+                
                 khSelect.clear();
                 var source = data.value;
-                var users = yyList[source] || [];
-
+                if(source == '返单'){
+                     users = {$_yyList|raw};
+                }else{
+                      var users = yyList[source] || [];
+                }
                 khSelect.setOptions(users);
             });
 
