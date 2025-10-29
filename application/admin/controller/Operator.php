@@ -66,6 +66,10 @@ class Operator extends Common
             $model = $model->with('contacts');
         }
 
+        if (!empty($params['field']) && $params['field'] == 'last_up_records') {
+            $model = $model->leftJoin('crm_comment c', 'c.leads_id = crm_leads.id')
+                ->order('c.create_date', $params['order']);
+        }
         // 确保获取分页参数
         $page = $params['page'] ?? input('page', 1);
         $limit = $params['limit'] ?? input('limit', 15); // 恢复默认分页值

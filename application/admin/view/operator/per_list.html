@@ -251,7 +251,7 @@
                     }
                 },
                 { field: 'issuccess', title: '成交状态', templet: function (res) { return res.issuccess == 1 ? '已成交' : '未成交'; } },
-                { field: 'last_up_records', title: '最新跟进记录' },
+                { field: 'last_up_records', title: '最新跟进记录',sort: true },
                 { field: 'pr_user', title: '负责人' },
                 { field: 'at_time', title: '创建时间', sort: true },
                 { width: 120, title: '操作', align: 'center', toolbar: '#action' }
@@ -334,6 +334,28 @@
                     page: { curr: 1 }
                 });
                 return false;
+            });
+
+
+            // 添加排序事件监听，仅对last_up_records字段调用后台接口
+            table.on('sort(table-list)', function(obj){
+                // 只对last_up_records字段调用后台接口
+                if(obj.field === 'last_up_records') {
+                    // 获取当前查询条件
+                    var formData = form.val('search-form');
+                    
+                    // 重新加载表格数据，传递排序参数
+                    table.reload('table-list', {
+                        url: "{:url('Operator/perSearch')}",
+                        where: { 
+                            keyword: formData,
+                            field: obj.field,
+                            order: obj.type
+                        },
+                        page: { curr: 1 }
+                    });
+                }
+                // 其他字段保持默认的前端排序行为，不做处理
             });
 
             // 日期控件
