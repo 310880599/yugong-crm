@@ -47,6 +47,12 @@
         .filtrate-warp .layui-badge:hover {
             color: white !important;
         }
+        
+        /* 添加提醒日期过期行的样式 */
+        .reminder-due-row td {
+            background-color: #f8d7da !important;
+            color: #fff !important;
+        }
     </style>
 
 </head>
@@ -162,10 +168,11 @@
 
     <script type="text/html" id="action">
 
-    <a class="layui-btn layui-btn-primary layui-btn-xs"  href="{:url('dialogue')}?id={{d.id}}"><i class="layui-icon">&#xe654;</i>写跟进</a>
+    <a class="layui-btn layui-btn-primary layui-btn-xs" href="javascript:void(0)" lay-event="followup"><i class="layui-icon">&#xe654;</i>写跟进</a>
     <a class="layui-btn  layui-btn-xs"  data-id="{{d.id}}" lay-event="edit"><i class="layui-icon">&#xe642;</i>编辑</a>
     <a class="layui-btn layui-btn-primary layui-btn-xs" data-id="{{d.id}}" lay-event="alter"><i class="layui-icon">&#xe60e;</i>转移</a>
     <a class="layui-btn layui-btn-primary layui-btn-xs" data-id="{{d.id}}" lay-event="chengjiao"><i class="layui-icon">&#xe63c;</i>成交</a>
+    <a class="layui-btn layui-btn-warm layui-btn-xs" data-id="{{d.id}}" lay-event="setReminder"><i class="layui-icon">&#xe637;</i>设提醒</a>
     <!-- <a class="layui-btn layui-btn-danger layui-btn-xs" data-id="{{d.id}}" lay-event="del"><i class="layui-icon">&#xe640;</i>删除</a> -->
 </script>
 
@@ -203,7 +210,18 @@
                 { field: 'id', title: 'ID', width: 80, fixed: true, hide: true },
                 {
                     field: 'kh_name', title: '客户名称', sort: true, templet: function (res) {
-                        return "<a href='{:url('dialogue')}?id=" + res.id + "'>" + res.kh_name + "</a>";
+                        // 检查是否设置了提醒且今天是提醒日或已过提醒日
+                        var today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        var reminderDate = res.reminder_date ? new Date(res.reminder_date) : null;
+                        if (reminderDate) {
+                            reminderDate.setHours(0, 0, 0, 0);
+                        }
+                        
+                        if (reminderDate && reminderDate <= today) {
+                            return "<a href='javascript:void(0)' data-id='" + res.id + "' lay-event='khname' style='color: red; font-weight: bold;'>" + res.kh_name + "</a>";
+                        }
+                        return "<a href='javascript:void(0)' data-id='" + res.id + "' lay-event='khname'>" + res.kh_name + "</a>";
                     }
                 },
                 { field: 'xs_area', title: '地区' },
@@ -212,6 +230,7 @@
                 { field: 'issuccess', title: '成交状态', templet: function (res) { return res.issuccess == 1 ? '已成交' : '未成交'; } },
                 { field: 'last_up_records', title: '最新跟进记录' },
                 { field: 'pr_user', title: '负责人' },
+                { field: 'reminder_date', title: '提醒日期', sort: true },
                 { field: 'at_time', title: '创建时间', sort: true },
                 { field: 'ut_time', title: '更新于', sort: true },
                 { fixed: 'right', width: isMobile ? 100 : 320, align: 'center', toolbar: '#action' }
@@ -231,8 +250,44 @@
                 page: true,
                 limit: 30,
                 cols: cols,
-                done: bindResizeSave     // 表格完成后绑定监听
+                done: function(res, curr, count) {
+                    // 表格渲染完成后，检查提醒日期并设置行样式
+                    setTimeout(function() {
+                        checkAndStyleRows();
+                    }, 100);
+                    bindResizeSave();     // 表格完成后绑定监听
+                }
             });
+
+            // 检查提醒日期并设置行样式
+            function checkAndStyleRows() {
+                // 遍历表格中的每一行
+                $('#table-list tbody tr').each(function() {
+                    var row = $(this);
+                    // 获取行数据
+                    var rowIndex = row.data('index');
+                    if (typeof rowIndex !== 'undefined') {
+                        var rowData = table.cache[tableId][rowIndex];
+                        if (rowData && rowData.reminder_date) {
+                            // 检查提醒日期是否已过期
+                            var reminderDate = new Date(rowData.reminder_date);
+                            var today = new Date();
+                            // 只比较日期部分
+                            reminderDate.setHours(0, 0, 0, 0);
+                            today.setHours(0, 0, 0, 0);
+                            
+                            // 如果提醒日期小于等于今天，则应用样式
+                            if (reminderDate <= today) {
+                                row.addClass('reminder-due-row');
+                            } else {
+                                row.removeClass('reminder-due-row');
+                            }
+                        } else {
+                            row.removeClass('reminder-due-row');
+                        }
+                    }
+                });
+            }
 
             /* ===== 4. 监听拖拽结束并保存 ===== */
             function bindResizeSave() {
@@ -261,6 +316,17 @@
                     if (saved[c.field]) { c.width = saved[c.field]; }
                 });
             }
+
+            // 重写table.reload方法以确保样式在重新加载后应用
+            var originalTableReload = table.reload;
+            table.reload = function(id, options) {
+                var result = originalTableReload(id, options);
+                // 在表格重新加载完成后应用样式
+                setTimeout(function() {
+                    checkAndStyleRows();
+                }, 100);
+                return result;
+            };
 
             // 添加按钮
             $('#add').on('click', function () {
@@ -325,7 +391,7 @@
                                     layer.close(index);
                                     if (res.code === 0) {
                                         layer.msg(res.msg, { time: 1000, icon: 1 });
-                                        tableIn.reload();
+                                        table.reload('table-list');
                                     } else {
                                         layer.msg(res.msg || '操作失败', { time: 1500, icon: 2 });
                                     }
@@ -346,7 +412,7 @@
                                     layer.close(loading);
                                     if (res.code === 0) {
                                         layer.msg(res.msg, { time: 1000, icon: 1 });
-                                        tableIn.reload();
+                                        table.reload('table-list');
                                     } else {
                                         layer.msg(res.msg || '删除失败', { time: 1500, icon: 2 });
                                     }
@@ -363,7 +429,13 @@
                 var layEvent =obj.event;
                 var id = obj.data.id;
                 lineEvent(layEvent,id);
-               });
+            });
+            
+            // 客户名称点击事件
+            $(document).on('click', '[lay-event=khname]', function(){
+                var id = $(this).data('id');
+                layer_add("写跟进", "{:url('dialogue')}?id=" + id);
+            });
 
             function lineEvent(event,id){
                 if (event === 'del') {
@@ -373,7 +445,7 @@
                             layer.close(loading);
                             if (res.code === 0) {
                                 layer.msg(res.msg, { time: 1000, icon: 1 });
-                                tableIn.reload();
+                                table.reload('table-list');
                             } else {
                                 layer.msg('操作失败！', { time: 1000, icon: 2 });
                             }
@@ -393,11 +465,63 @@
                             layer.close(index);
                             if (res.code === 0) {
                                 layer.msg(res.msg, { time: 1000, icon: 1 });
-                                tableIn.reload();
+                                table.reload('table-list');
                             } else {
                                 layer.msg('操作失败！', { time: 1000, icon: 2 });
                             }
                         });
+                    });
+                }
+                else if (event === 'followup') {
+                    layer_add("写跟进", "{:url('dialogue')}?id=" + id);
+                }
+                else if (event === 'setReminder') {
+                    // 设置提醒日期弹窗
+                    layer.open({
+                        type: 1,
+                        title: '设置提醒日期',
+                        area: ['400px', '250px'],
+                        content: `
+                            <div style="padding: 20px;">
+                                <input type="text" class="layui-input" id="reminderDate" placeholder="请选择提醒日期">
+                                <div style="margin-top: 20px; text-align: right;">
+                                    <button class="layui-btn layui-btn-primary" onclick="layer.closeAll()">取消</button>
+                                    <button class="layui-btn" id="saveReminder">保存</button>
+                                </div>
+                            </div>
+                        `,
+                        success: function() {
+                            // 初始化日期选择器
+                            layui.laydate.render({
+                                elem: '#reminderDate',
+                                theme: '#448aff',
+                                done: function(value) {
+                                    $('#reminderDate').val(value);
+                                }
+                            });
+                            
+                            // 绑定保存事件
+                            $('#saveReminder').on('click', function() {
+                                var date = $('#reminderDate').val();
+                                if (!date) {
+                                    layer.msg('请选择提醒日期');
+                                    return;
+                                }
+                                
+                                $.post("{:url('Client/setReminder')}", { 
+                                    id: id, 
+                                    reminder_date: date 
+                                }, function(res) {
+                                    if (res.code === 0) {
+                                        layer.msg(res.msg, { time: 1000, icon: 1 });
+                                        table.reload('table-list');
+                                        layer.closeAll();
+                                    } else {
+                                        layer.msg(res.msg || '设置失败', { time: 1500, icon: 2 });
+                                    }
+                                });
+                            });
+                        }
                     });
                 }
             };
@@ -413,7 +537,13 @@
                 table.reload('table-list', {
                     url: "{:url('Client/personClientSearch')}",
                     where: { keyword: data.field },
-                    page: { curr: 1 }
+                    page: { curr: 1 },
+                    done: function() {
+                        // 搜索完成后应用样式
+                        setTimeout(function() {
+                            checkAndStyleRows();
+                        }, 100);
+                    }
                 });
             });
 

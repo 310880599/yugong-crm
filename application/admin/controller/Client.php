@@ -1406,6 +1406,8 @@ class Client extends Common
         return $result = ['code' => 0, 'msg' => '获取成功!', 'data' => $list['data'], 'count' => $list['total'], 'rel' => 1];
     }
     //（我的客户）搜索
+   // ... existing code ...
+    //（我的客户）搜索
     public function personClientSearch()
     {
         $page = input('page') ? input('page') : 1;
@@ -1418,8 +1420,22 @@ class Client extends Common
             $keyword['timebucket'] = $this->buildTimeWhere($keyword['at_time'], 'at_time');
         }
         $list = model('client')->getPersonClientSearchList($page, $limit, $keyword);
+        
+        // 处理提醒日期标红逻辑
+        foreach ($list['data'] as &$item) {
+            if (!empty($item['reminder_date'])) {
+                $reminderDate = strtotime($item['reminder_date']);
+                $today = strtotime(date('Y-m-d'));
+                if ($reminderDate <= $today) {
+                    // 提醒日期已到或已过，标记为需要标红
+                    $item['is_reminder_due'] = 1;
+                }
+            }
+        }
+        
         return $result = ['code' => 0, 'msg' => '获取成功!', 'data' => $list['data'], 'count' => $list['total'], 'rel' => 1];
     }
+// ... existing code ...
     //（我的客户）搜索
     public function chengjiaoClientSearch()
     {
@@ -2328,6 +2344,65 @@ class Client extends Common
             $this->success("成功提取 {$successCount} 个客户", url('client/index'));
         }
     }
+/**
+ * 设置客户提醒日期
+ */
+public function setReminder() {
+    if (request()->isPost()) {
+        $id = input('id');
+        $reminderDate = input('reminder_date');
+        
+        // 验证数据
+        if (!$id || !$reminderDate) {
+            return json(['code' => 1, 'msg' => '参数错误']);
+        }
+        
+        try {
+            // 更新数据库
+            $result = Db::name('crm_leads')->where('id', $id)->update([
+                'reminder_date' => $reminderDate,
+                'ut_time' => date('Y-m-d H:i:s')
+            ]);
+            
+            if ($result !== false) {
+                return json(['code' => 0, 'msg' => '提醒日期设置成功']);
+            } else {
+                return json(['code' => 1, 'msg' => '设置失败']);
+            }
+        } catch (\Exception $e) {
+            return json(['code' => 1, 'msg' => '设置失败：' . $e->getMessage()]);
+        }
+    }
+}
 
+/**
+ * 清除客户提醒日期
+ */
+public function clearReminder() {
+    if (request()->isPost()) {
+        $id = input('id');
+        
+        // 验证数据
+        if (!$id) {
+            return json(['code' => 1, 'msg' => '参数错误']);
+        }
+        
+        try {
+            // 更新数据库
+            $result = Db::name('crm_leads')->where('id', $id)->update([
+                'reminder_date' => null,
+                'ut_time' => date('Y-m-d H:i:s')
+            ]);
+            
+            if ($result !== false) {
+                return json(['code' => 0, 'msg' => '提醒日期已清除']);
+            } else {
+                return json(['code' => 1, 'msg' => '清除失败']);
+            }
+        } catch (\Exception $e) {
+            return json(['code' => 1, 'msg' => '清除失败：' . $e->getMessage()]);
+        }
+    }
+}
    
 }
