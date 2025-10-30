@@ -48,10 +48,11 @@
             color: white !important;
         }
         
-        /* 添加提醒日期过期行的样式 */
-        .reminder-due-row td {
-            background-color: #f8d7da !important;
-            color: #fff !important;
+        /* 设置了提醒日期的行：红底白字高亮（提升优先级，适配 Layui 结构） */
+        .layui-table-view .reminder-due-row td,
+        .layui-table-view .reminder-due-row td .layui-table-cell {
+            background-color: #ff4d4f !important; /* 红色背景 */
+            color: #fff !important;              /* 白色字体 */
         }
     </style>
 
@@ -210,17 +211,6 @@
                 { field: 'id', title: 'ID', width: 80, fixed: true, hide: true },
                 {
                     field: 'kh_name', title: '客户名称', sort: true, templet: function (res) {
-                        // 检查是否设置了提醒且今天是提醒日或已过提醒日
-                        var today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        var reminderDate = res.reminder_date ? new Date(res.reminder_date) : null;
-                        if (reminderDate) {
-                            reminderDate.setHours(0, 0, 0, 0);
-                        }
-                        
-                        if (reminderDate && reminderDate <= today) {
-                            return "<a href='javascript:void(0)' data-id='" + res.id + "' lay-event='khname' style='color: red; font-weight: bold;'>" + res.kh_name + "</a>";
-                        }
                         return "<a href='javascript:void(0)' data-id='" + res.id + "' lay-event='khname'>" + res.kh_name + "</a>";
                     }
                 },
@@ -261,32 +251,30 @@
 
             // 检查提醒日期并设置行样式
             function checkAndStyleRows() {
-                // 遍历表格中的每一行
-                $('#table-list tbody tr').each(function() {
-                    var row = $(this);
-                    // 获取行数据
-                    var rowIndex = row.data('index');
-                    if (typeof rowIndex !== 'undefined') {
-                        var rowData = table.cache[tableId][rowIndex];
-                        if (rowData && rowData.reminder_date) {
-                            // 检查提醒日期是否已过期
-                            var reminderDate = new Date(rowData.reminder_date);
-                            var today = new Date();
-                            // 只比较日期部分
-                            reminderDate.setHours(0, 0, 0, 0);
-                            today.setHours(0, 0, 0, 0);
-                            
-                            // 如果提醒日期小于等于今天，则应用样式
-                            if (reminderDate <= today) {
-                                row.addClass('reminder-due-row');
-                            } else {
-                                row.removeClass('reminder-due-row');
-                            }
-                        } else {
-                            row.removeClass('reminder-due-row');
-                        }
+                var view = $('#' + tableId).next('.layui-table-view');
+                if (view.length === 0) return;
+                var dataCache = table.cache[tableId] || [];
+
+                for (var i = 0; i < dataCache.length; i++) {
+                    var rowData = dataCache[i];
+                    var needHighlight = !!(rowData && rowData.reminder_date);
+
+                    // 主体
+                    var mainRow = view.find('.layui-table-body tbody tr[data-index="' + i + '"]');
+                    // 左右固定列
+                    var leftRow = view.find('.layui-table-fixed-l .layui-table-body tbody tr[data-index="' + i + '"]');
+                    var rightRow = view.find('.layui-table-fixed-r .layui-table-body tbody tr[data-index="' + i + '"]');
+
+                    if (needHighlight) {
+                        mainRow.addClass('reminder-due-row');
+                        leftRow.addClass('reminder-due-row');
+                        rightRow.addClass('reminder-due-row');
+                    } else {
+                        mainRow.removeClass('reminder-due-row');
+                        leftRow.removeClass('reminder-due-row');
+                        rightRow.removeClass('reminder-due-row');
                     }
-                });
+                }
             }
 
             /* ===== 4. 监听拖拽结束并保存 ===== */
