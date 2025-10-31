@@ -893,4 +893,168 @@ class Operator extends Common
 
         return $data;
     }
+
+    /**
+     * 获取业务员列表（group_id为10或11，即业务员和业务主管）
+     */
+    public function getBusinessList()
+    {
+        if (!request()->isAjax()) {
+            return json(['code' => 0, 'msg' => '非法请求']);
+        }
+
+        $current_admin = Admin::getMyInfo();
+        $where = [
+            $this->getOrgWhere($current_admin['org']),
+            ['is_open', '=', 1],
+            ['group_id', 'in', [$this->ywgid, $this->ywzgid]] // group_id为10(业务员)或11(业务主管)
+        ];
+
+        $businessList = Db::table('admin')
+            ->where($where)
+            ->where('username', '<>', '')
+            ->field('admin_id,username')
+            ->order('username')
+            ->select();
+
+        return json(['code' => 1, 'msg' => '获取成功', 'data' => $businessList]);
+    }
+
+    /**
+     * 发送询盘录入提醒消息
+     */
+    public function sendReminderMessage()
+    {
+        if (!request()->isPost()) {
+            return json(['code' => 0, 'msg' => '非法请求']);
+        }
+
+        $business_id = input('post.business_id');
+        if (empty($business_id)) {
+            return json(['code' => 0, 'msg' => '请选择业务员']);
+        }
+
+        // 获取当前运营信息
+        $current_admin = Admin::getMyInfo();
+        if (!$current_admin) {
+            return json(['code' => 0, 'msg' => '获取运营信息失败']);
+        }
+
+        // 获取业务员信息
+        $business = Db::table('admin')
+            ->where('admin_id', $business_id)
+            ->where('group_id', 'in', [$this->ywgid, $this->ywzgid])
+            ->find();
+
+        if (!$business) {
+            return json(['code' => 0, 'msg' => '业务员不存在']);
+        }
+
+        // 构建提醒消息（根据运营性别判断使用"他"或"她"）
+        $gender = isset($current_admin['sex']) ? $current_admin['sex'] : '';
+        $pronoun = ($gender == '女' || $gender == 'female') ? '她' : '他';
+        $message = $current_admin['username'] . '提醒您，' . $pronoun . '的询盘还没有被您录入喔。';
+
+        // 确保business_id为整数类型
+        $business_id = intval($business_id);
+
+        // 存储到数据库表中
+        $notice_data = [
+            'receiver_id' => $business_id,
+            'sender_id' => $current_admin['admin_id'],
+            'sender_name' => $current_admin['username'],
+            'message' => $message,
+            'is_read' => 0,
+            'create_time' => date('Y-m-d H:i:s')
+        ];
+        
+        $notice_id = Db::table('crm_inquiry_notice')->insertGetId($notice_data);
+        
+        if ($notice_id) {
+            return json(['code' => 1, 'msg' => '提醒发送成功']);
+        } else {
+            return json(['code' => 0, 'msg' => '提醒发送失败，请重试']);
+        }
+    }
+
+    /**
+     * 标记消息为已读
+     */
+    public function markNoticeAsRead()
+    {
+        if (!request()->isPost()) {
+            return json(['code' => 0, 'msg' => '非法请求']);
+        }
+
+        $admin_id = input('post.admin_id');
+        $notice_id = input('post.notice_id', 0);
+        
+        if (empty($admin_id)) {
+            return json(['code' => 0, 'msg' => '参数错误']);
+        }
+
+        // 更新数据库中的提醒为已读
+        $update_data = [
+            'is_read' => 1,
+            'read_time' => date('Y-m-d H:i:s')
+        ];
+        
+        $where = [
+            ['receiver_id', '=', $admin_id],
+            ['is_read', '=', 0]
+        ];
+        
+        // 如果指定了notice_id，只标记该条
+        if ($notice_id > 0) {
+            $where[] = ['id', '=', $notice_id];
+        }
+        
+        $result = Db::table('crm_inquiry_notice')
+            ->where($where)
+            ->update($update_data);
+
+        return json(['code' => 1, 'msg' => '标记成功', 'affected' => $result]);
+    }
+
+    /**
+     * 获取业务通知列表（用于弹窗显示）
+     */
+    public function getBusinessNotices()
+    {
+        if (!request()->isAjax()) {
+            return json(['code' => 0, 'msg' => '非法请求']);
+        }
+
+        $current_admin_id = session('aid');
+        if (empty($current_admin_id)) {
+            return json(['code' => 0, 'msg' => '未登录']);
+        }
+
+        // 从数据库获取未读提醒
+        $notices = Db::table('crm_inquiry_notice')
+            ->where('receiver_id', $current_admin_id)
+            ->where('is_read', 0)
+            ->order('create_time desc')
+            ->select();
+
+        // 转换为前端需要的格式
+        $notices_list = [];
+        foreach ($notices as $notice) {
+            $notices_list[] = [
+                'id' => $notice['id'],
+                'sender_id' => $notice['sender_id'],
+                'sender_name' => $notice['sender_name'],
+                'message' => $notice['message'],
+                'create_time' => $notice['create_time'],
+                'is_read' => $notice['is_read']
+            ];
+        }
+
+        return json([
+            'code' => 1, 
+            'msg' => '获取成功', 
+            'data' => $notices_list,
+            'count' => count($notices_list)
+        ]);
+    }
 }

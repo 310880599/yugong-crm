@@ -77,6 +77,10 @@ class Index extends Common
     }
     public function main()
     {
+        // 传递admin_id用于提醒功能
+        $admin_id = session('aid');
+        $this->assign('admin_id', $admin_id);
+        
         //当前时间
         $time = time();
         $end_time = date('Y-m-d', $time);

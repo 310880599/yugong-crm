@@ -1,6 +1,37 @@
+<!-- 业务提醒功能 -->
+<div class="layui-row" style="margin-bottom: 15px;">
+    <div class="layui-col-md12">
+        <div class="layui-card" style="position: relative; z-index: 9999;">
+            <div class="layui-card-body" style="overflow: visible !important; position: relative; z-index: 9999;">
+                <div class="layui-form" style="display: flex; align-items: center; gap: 15px; position: relative; z-index: 9999;">
+                    <div style="display: flex; align-items: center; position: relative; z-index: 10000;">
+                        <label style="margin-right: 10px; white-space: nowrap;">选择业务员：</label>
+                        <div style="position: relative; z-index: 10000;">
+                            <select id="businessSelect" lay-filter="businessSelect" class="layui-select" style="width: 200px; position: relative; z-index: 10000;">
+                                <option value="">请选择业务员</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="button" id="sendReminderBtn" class="layui-btn layui-btn-normal">
+                        <i class="layui-icon layui-icon-notice"></i> 发送提醒
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 确保下拉框不被遮挡 */
+    .layui-form-select dl {
+        z-index: 99999 !important;
+    }
+    body .layui-form-select dl {
+        z-index: 99999 !important;
+    }
+</style>
+
 <!-- 左边统计 -->
-
-
 <div class=" layui-col-md8">
     <div class="layui-row layui-col-space15">
         <div class="layui-col-md6">
@@ -283,5 +314,71 @@
     function init(){
         initFoldCard();
          ExportSelectTables.addCheckboxes();
+         // 初始化业务提醒功能
+         initBusinessReminder();
+    }
+
+    // 初始化业务提醒功能
+    function initBusinessReminder() {
+        // 获取业务员列表
+        $.ajax({
+            url: "{:url('Operator/getBusinessList')}",
+            type: 'POST',
+            dataType: 'json',
+            success: function(res) {
+                if (res.code == 1 && res.data) {
+                    var select = $('#businessSelect');
+                    select.empty();
+                    select.append('<option value="">请选择业务员</option>');
+                    $.each(res.data, function(index, item) {
+                        select.append('<option value="' + item.admin_id + '">' + item.username + '</option>');
+                    });
+                    // 重新渲染layui的select
+                    layui.form.render('select');
+                } else {
+                    layer.msg(res.msg || '获取业务员列表失败', {icon: 2});
+                }
+            },
+            error: function() {
+                layer.msg('请求失败，请重试', {icon: 2});
+            }
+        });
+
+        // 发送提醒按钮点击事件
+        $('#sendReminderBtn').on('click', function() {
+            var businessId = $('#businessSelect').val();
+            if (!businessId) {
+                layer.msg('请先选择业务员', {icon: 0});
+                return;
+            }
+
+            var btn = $(this);
+            var originalText = btn.html();
+            btn.prop('disabled', true).html('<i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"></i> 发送中...');
+
+            $.ajax({
+                url: "{:url('Operator/sendReminderMessage')}",
+                type: 'POST',
+                data: {
+                    business_id: businessId
+                },
+                dataType: 'json',
+                success: function(res) {
+                    btn.prop('disabled', false).html(originalText);
+                    if (res.code == 1) {
+                        layer.msg(res.msg || '提醒发送成功', {icon: 1});
+                        // 清空选择
+                        $('#businessSelect').val('');
+                        layui.form.render('select');
+                    } else {
+                        layer.msg(res.msg || '发送失败', {icon: 2});
+                    }
+                },
+                error: function() {
+                    btn.prop('disabled', false).html(originalText);
+                    layer.msg('请求失败，请重试', {icon: 2});
+                }
+            });
+        });
     }
 </script>
